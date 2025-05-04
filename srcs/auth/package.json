@@ -1,0 +1,22 @@
+{
+  "name": "auth-service",
+  "version": "1.0.0",
+  "description": "Authentication microservice",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js"
+  },
+  "dependencies": {
+    "fastify": "^4.24.3",
+    "fastify-plugin": "^4.5.0",
+    "@fastify/cors": "^8.4.1",
+    "sqlite3": "^5.1.6",
+    "jsonwebtoken": "^9.0.2",
+    "bcrypt": "^5.1.1",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+} 
