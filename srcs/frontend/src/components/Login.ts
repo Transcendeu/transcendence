@@ -64,7 +64,7 @@ export class Login {
                     this.router.navigate('/');
                 } catch (error) {
                     errorDisplay.textContent = error instanceof Error ? error.message : 'Login failed';
-                    errorDisplay.style.display = 'block';
+                    (errorDisplay as HTMLElement).style.display = 'block';
                 }
             });
         }

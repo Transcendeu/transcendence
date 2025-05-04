@@ -1,14 +1,14 @@
 export class PongGame {
     private container: HTMLElement;
-    private canvas: HTMLCanvasElement;
-    private context: CanvasRenderingContext2D;
+    private canvas!: HTMLCanvasElement;
+    private context!: CanvasRenderingContext2D;
     private onGameEnd: () => void;
 
     // Game objects
-    private paddle1: Paddle;
-    private paddle2: Paddle;
-    private ball: Ball;
-    private score: Score;
+    private paddle1!: Paddle;
+    private paddle2!: Paddle;
+    private ball!: Ball;
+    private score!: Score;
 
     // Game state
     private gameLoop: number = 0;

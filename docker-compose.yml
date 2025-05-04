@@ -18,6 +18,15 @@ services:
     networks:
       - transcendence_network
 
+  frontend:
+    build:
+      context: ./srcs/frontend
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    networks:
+      - transcendence_network
+
 networks:
   transcendence_network:
     driver: bridge

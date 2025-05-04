@@ -16,3 +16,5 @@ clean:
 	docker compose down -v
 	rm -rf srcs/auth/node_modules
 	rm -rf srcs/auth/database.sqlite
+	rm -rf srcs/frontend/node_modules
+	rm -rf srcs/frontend/dist

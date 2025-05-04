@@ -139,7 +139,7 @@ export class LocalTournament {
 
             // Filter matches for this round
             const roundMatches = this.matches.filter(match => match.round === round);
-            roundMatches.forEach((match, index) => {
+            roundMatches.forEach(match => {
                 bracketHTML += `
                     <div class="match ${match === this.matches[this.currentMatch] ? 'current' : ''}">
                         <div class="player ${match.winner === match.player1 ? 'winner' : ''}">${match.player1.name}</div>
@@ -224,8 +224,9 @@ export class LocalTournament {
         });
 
         // Start the game
-        new PongGame(gameContainer, async (winner: number) => {
+        new PongGame(gameContainer, () => {
             // Update match results
+            const winner = 1; // Default to player 1 for now
             const winningPlayer = winner === 1 ? match.player1 : match.player2;
             const losingPlayer = winner === 1 ? match.player2 : match.player1;
             

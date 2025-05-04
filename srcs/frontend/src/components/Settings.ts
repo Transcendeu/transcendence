@@ -71,7 +71,7 @@ export class Settings {
         this.loadUserSettings();
     }
 
-    private async loadUserSettings(): void {
+    private async loadUserSettings(): Promise<void> {
         try {
             const response = await fetch('/api/user/settings', {
                 headers: {

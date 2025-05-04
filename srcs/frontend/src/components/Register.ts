@@ -58,7 +58,7 @@ export class Register {
 
                 if (password !== confirmPassword) {
                     errorDisplay.textContent = 'Passwords do not match';
-                    errorDisplay.style.display = 'block';
+                    (errorDisplay as HTMLElement).style.display = 'block';
                     return;
                 }
 
@@ -93,7 +93,7 @@ export class Register {
                     this.router.navigate('/');
                 } catch (error) {
                     errorDisplay.textContent = error instanceof Error ? error.message : 'Registration failed';
-                    errorDisplay.style.display = 'block';
+                    (errorDisplay as HTMLElement).style.display = 'block';
                 }
             });
         }
