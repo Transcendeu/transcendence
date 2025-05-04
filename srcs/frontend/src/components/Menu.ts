@@ -22,6 +22,7 @@ export class Menu {
                 <h1 class="menu-title">DUCKONG</h1>
                 <div class="menu-buttons">
                     <button class="menu-button" id="local-game">LOCAL GAME</button>
+                    <button class="menu-button" id="local-tournament">LOCAL TOURNAMENT</button>
                     ${isAuth ? `
                         <button class="menu-button" id="online-game">ONLINE GAME</button>
                         <button class="menu-button" id="tournament">TOURNAMENT</button>
@@ -90,6 +91,7 @@ export class Menu {
 
     private addEventListeners(): void {
         const localGameBtn = document.getElementById('local-game');
+        const localTournamentBtn = document.getElementById('local-tournament');
         const onlineGameBtn = document.getElementById('online-game');
         const tournamentBtn = document.getElementById('tournament');
         const settingsBtn = document.getElementById('settings');
@@ -100,6 +102,12 @@ export class Menu {
         if (localGameBtn) {
             localGameBtn.addEventListener('click', () => {
                 this.router.navigate('/game/local');
+            });
+        }
+
+        if (localTournamentBtn) {
+            localTournamentBtn.addEventListener('click', () => {
+                this.router.navigate('/game/local-tournament');
             });
         }
 

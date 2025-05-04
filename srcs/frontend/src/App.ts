@@ -5,6 +5,7 @@ import { NotFound } from './components/NotFound';
 import { Login } from './components/Login';
 import { Register } from './components/Register';
 import { Settings } from './components/Settings';
+import { LocalTournament } from './components/LocalTournament';
 
 export class App {
     private container: HTMLElement;
@@ -39,6 +40,11 @@ export class App {
         this.router.addRoute('/game/local', () => {
             this.container.innerHTML = '';
             return this.startLocalGame();
+        });
+
+        this.router.addRoute('/game/local-tournament', () => {
+            this.container.innerHTML = '';
+            new LocalTournament(this.container, this.router);
         });
 
         // Protected routes
