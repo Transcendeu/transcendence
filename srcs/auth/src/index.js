@@ -74,22 +74,32 @@ fastify.post('/register', async (request, reply) => {
           const expiresAt = new Date();
           expiresAt.setHours(expiresAt.getHours() + 1);
 
-          db.run(
-            'INSERT INTO AUTH (user_id, access_token, refresh_token, expires_at) VALUES (?, ?, ?, ?)',
-            [userId, accessToken, refreshToken, expiresAt.toISOString()],
-            (err) => {
-              if (err) {
-                reply.code(500).send({ error: 'Error creating auth record' });
-                reject(err);
-                return;
-              }
-              resolve({
-                accessToken,
-                refreshToken,
-                user: { id: userId, username, email }
-              });
+          // First mark any existing auth records as revoked
+          db.run('UPDATE AUTH SET revoked = 1 WHERE user_id = ?', [userId], (err) => {
+            if (err) {
+              reply.code(500).send({ error: 'Error updating old auth records' });
+              reject(err);
+              return;
             }
-          );
+
+            // Then create the new auth record
+            db.run(
+              'INSERT INTO AUTH (user_id, access_token, refresh_token, expires_at) VALUES (?, ?, ?, ?)',
+              [userId, accessToken, refreshToken, expiresAt.toISOString()],
+              (err) => {
+                if (err) {
+                  reply.code(500).send({ error: 'Error creating auth record' });
+                  reject(err);
+                  return;
+                }
+                resolve({
+                  accessToken,
+                  refreshToken,
+                  user: { id: userId, username, email }
+                });
+              }
+            );
+          });
         }
       );
     });
@@ -100,14 +110,14 @@ fastify.post('/register', async (request, reply) => {
 
 // Login route
 fastify.post('/login', async (request, reply) => {
-  const { email, password } = request.body;
+  const { username, password } = request.body;
 
-  if (!email || !password) {
-    return reply.code(400).send({ error: 'Email and password are required' });
+  if (!username || !password) {
+    return reply.code(400).send({ error: 'Username/Email and password are required' });
   }
 
   return new Promise((resolve, reject) => {
-    db.get('SELECT * FROM USER WHERE email = ?', [email], async (err, user) => {
+    db.get('SELECT * FROM USER WHERE email = ? OR username = ?', [username, username], async (err, user) => {
       if (err) {
         reply.code(500).send({ error: 'Database error' });
         reject(err);
@@ -142,22 +152,52 @@ fastify.post('/login', async (request, reply) => {
         const expiresAt = new Date();
         expiresAt.setHours(expiresAt.getHours() + 1);
 
-        db.run(
-          'INSERT INTO AUTH (user_id, access_token, refresh_token, expires_at) VALUES (?, ?, ?, ?)',
-          [user.id, accessToken, refreshToken, expiresAt.toISOString()],
-          (err) => {
-            if (err) {
-              reply.code(500).send({ error: 'Error creating auth record' });
-              reject(err);
-              return;
-            }
-            resolve({
-              accessToken,
-              refreshToken,
-              user: { id: user.id, username: user.username, email: user.email }
-            });
+        // First check if an auth record exists for this user
+        db.get('SELECT id FROM AUTH WHERE user_id = ? AND revoked = 0', [user.id], (err, existingAuth) => {
+          if (err) {
+            reply.code(500).send({ error: 'Error checking existing auth record' });
+            reject(err);
+            return;
           }
-        );
+
+          if (existingAuth) {
+            // Update existing auth record
+            db.run(
+              'UPDATE AUTH SET access_token = ?, refresh_token = ?, expires_at = ? WHERE id = ?',
+              [accessToken, refreshToken, expiresAt.toISOString(), existingAuth.id],
+              (err) => {
+                if (err) {
+                  reply.code(500).send({ error: 'Error updating auth record' });
+                  reject(err);
+                  return;
+                }
+                resolve({
+                  accessToken,
+                  refreshToken,
+                  user: { id: user.id, username: user.username, email: user.email }
+                });
+              }
+            );
+          } else {
+            // Create new auth record
+            db.run(
+              'INSERT INTO AUTH (user_id, access_token, refresh_token, expires_at) VALUES (?, ?, ?, ?)',
+              [user.id, accessToken, refreshToken, expiresAt.toISOString()],
+              (err) => {
+                if (err) {
+                  reply.code(500).send({ error: 'Error creating auth record' });
+                  reject(err);
+                  return;
+                }
+                resolve({
+                  accessToken,
+                  refreshToken,
+                  user: { id: user.id, username: user.username, email: user.email }
+                });
+              }
+            );
+          }
+        });
       } catch (error) {
         reply.code(500).send({ error: 'Error processing request' });
         reject(error);
@@ -182,22 +222,54 @@ fastify.post('/refresh', async (request, reply) => {
       { expiresIn: '1h' }
     );
 
+    const refreshToken = jwt.sign(
+      { id: decoded.id },
+      process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key',
+      { expiresIn: '7d' }
+    );
+
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 1);
 
     return new Promise((resolve, reject) => {
-      db.run(
-        'INSERT INTO AUTH (user_id, access_token, refresh_token, expires_at) VALUES (?, ?, ?, ?)',
-        [decoded.id, accessToken, refreshToken, expiresAt.toISOString()],
-        (err) => {
-          if (err) {
-            reply.code(500).send({ error: 'Error creating auth record' });
-            reject(err);
-            return;
-          }
-          resolve({ accessToken });
+      // First check if an auth record exists for this user
+      db.get('SELECT id FROM AUTH WHERE user_id = ? AND revoked = 0', [decoded.id], (err, existingAuth) => {
+        if (err) {
+          reply.code(500).send({ error: 'Error checking existing auth record' });
+          reject(err);
+          return;
         }
-      );
+
+        if (existingAuth) {
+          // Update existing auth record
+          db.run(
+            'UPDATE AUTH SET access_token = ?, expires_at = ? WHERE id = ?',
+            [accessToken, expiresAt.toISOString(), existingAuth.id],
+            (err) => {
+              if (err) {
+                reply.code(500).send({ error: 'Error updating auth record' });
+                reject(err);
+                return;
+              }
+              resolve({ accessToken });
+            }
+          );
+        } else {
+          // Create new auth record
+          db.run(
+            'INSERT INTO AUTH (user_id, access_token, refresh_token, expires_at) VALUES (?, ?, ?, ?)',
+            [decoded.id, accessToken, refreshToken, expiresAt.toISOString()],
+            (err) => {
+              if (err) {
+                reply.code(500).send({ error: 'Error creating auth record' });
+                reject(err);
+                return;
+              }
+              resolve({ accessToken });
+            }
+          );
+        }
+      });
     });
   } catch (error) {
     reply.code(403).send({ error: 'Invalid refresh token' });

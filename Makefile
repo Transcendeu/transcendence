@@ -18,3 +18,5 @@ clean: down
 	rm -rf srcs/auth/database.sqlite
 	rm -rf srcs/frontend/node_modules
 	rm -rf srcs/frontend/dist
+
+re: clean up
