@@ -12,8 +12,8 @@ build:
 logs:
 	docker compose logs -f auth
 
-clean:
-	docker compose down -v
+clean: down
+	docker system prune -a
 	rm -rf srcs/auth/node_modules
 	rm -rf srcs/auth/database.sqlite
 	rm -rf srcs/frontend/node_modules

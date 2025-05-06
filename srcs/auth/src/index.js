@@ -32,10 +32,10 @@ const authenticateToken = async (request, reply) => {
 };
 
 // Register route
-fastify.post('/api/auth/register', async (request, reply) => {
-  const { name, email, password } = request.body;
+fastify.post('/register', async (request, reply) => {
+  const { username, email, password } = request.body;
 
-  if (!name || !email || !password) {
+  if (!username || !email || !password) {
     return reply.code(400).send({ error: 'All fields are required' });
   }
 
@@ -44,8 +44,8 @@ fastify.post('/api/auth/register', async (request, reply) => {
     
     return new Promise((resolve, reject) => {
       db.run(
-        'INSERT INTO USER (name, email, password) VALUES (?, ?, ?)',
-        [name, email, hashedPassword],
+        'INSERT INTO USER (username, email, password) VALUES (?, ?, ?)',
+        [username, email, hashedPassword],
         function(err) {
           if (err) {
             if (err.message.includes('UNIQUE constraint failed')) {
@@ -86,7 +86,7 @@ fastify.post('/api/auth/register', async (request, reply) => {
               resolve({
                 accessToken,
                 refreshToken,
-                user: { id: userId, name, email }
+                user: { id: userId, username, email }
               });
             }
           );
@@ -99,7 +99,7 @@ fastify.post('/api/auth/register', async (request, reply) => {
 });
 
 // Login route
-fastify.post('/api/auth/login', async (request, reply) => {
+fastify.post('/login', async (request, reply) => {
   const { email, password } = request.body;
 
   if (!email || !password) {
@@ -154,7 +154,7 @@ fastify.post('/api/auth/login', async (request, reply) => {
             resolve({
               accessToken,
               refreshToken,
-              user: { id: user.id, name: user.name, email: user.email }
+              user: { id: user.id, username: user.username, email: user.email }
             });
           }
         );
@@ -167,7 +167,7 @@ fastify.post('/api/auth/login', async (request, reply) => {
 });
 
 // Refresh token route
-fastify.post('/api/auth/refresh', async (request, reply) => {
+fastify.post('/refresh', async (request, reply) => {
   const { refreshToken } = request.body;
 
   if (!refreshToken) {
@@ -205,7 +205,7 @@ fastify.post('/api/auth/refresh', async (request, reply) => {
 });
 
 // Logout route
-fastify.post('/api/auth/logout', { preHandler: authenticateToken }, async (request, reply) => {
+fastify.post('/logout', { preHandler: authenticateToken }, async (request, reply) => {
   const authHeader = request.headers.authorization;
   const token = authHeader && authHeader.split(' ')[1];
 
@@ -226,9 +226,9 @@ fastify.post('/api/auth/logout', { preHandler: authenticateToken }, async (reque
 });
 
 // Get current user route
-fastify.get('/api/auth/me', { preHandler: authenticateToken }, async (request, reply) => {
+fastify.get('/me', { preHandler: authenticateToken }, async (request, reply) => {
   return new Promise((resolve, reject) => {
-    db.get('SELECT id, name, email FROM USER WHERE id = ?', [request.user.id], (err, user) => {
+    db.get('SELECT id, username, email FROM USER WHERE id = ?', [request.user.id], (err, user) => {
       if (err) {
         reply.code(500).send({ error: 'Database error' });
         reject(err);

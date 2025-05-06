@@ -16,7 +16,7 @@ const initDatabase = () => {
     db.serialize(() => {
       db.run(`CREATE TABLE IF NOT EXISTS USER (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
+        username TEXT NOT NULL,
         email TEXT NOT NULL UNIQUE,
         password TEXT NOT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
