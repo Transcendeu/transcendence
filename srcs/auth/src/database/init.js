@@ -19,6 +19,8 @@ const initDatabase = () => {
         username TEXT NOT NULL,
         email TEXT NOT NULL UNIQUE,
         password TEXT NOT NULL,
+        two_factor_secret TEXT,
+        two_factor_enabled BOOLEAN DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`);

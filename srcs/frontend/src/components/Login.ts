@@ -21,6 +21,10 @@ export class Login {
                         <label for="password">PASSWORD</label>
                         <input type="password" id="password" name="password" required>
                     </div>
+                    <div id="twoFactorGroup" class="form-group" style="display: none;">
+                        <label for="twoFactorToken">2FA CODE</label>
+                        <input type="text" id="twoFactorToken" name="twoFactorToken" pattern="[0-9]{6}" maxlength="6" placeholder="Enter 6-digit code">
+                    </div>
                     <div class="form-error" id="loginError"></div>
                     <button type="submit" class="auth-button">ACCESS SYSTEM</button>
                 </form>
@@ -38,6 +42,8 @@ export class Login {
         const loginForm = container.querySelector('#loginForm');
         const toRegister = container.querySelector('#toRegister');
         const errorDisplay = container.querySelector('#loginError');
+        const twoFactorGroup = container.querySelector('#twoFactorGroup');
+        const twoFactorToken = container.querySelector('#twoFactorToken') as HTMLInputElement;
 
         if (loginForm && errorDisplay) {
             loginForm.addEventListener('submit', async (e) => {
@@ -45,6 +51,7 @@ export class Login {
                 const formData = new FormData(e.target as HTMLFormElement);
                 const username = formData.get('username') as string;
                 const password = formData.get('password') as string;
+                const token = formData.get('twoFactorToken') as string;
 
                 try {
                     const response = await fetch('/api/auth/login', {
@@ -52,15 +59,23 @@ export class Login {
                         headers: {
                             'Content-Type': 'application/json',
                         },
-                        body: JSON.stringify({ username, password }),
+                        body: JSON.stringify({ username, password, twoFactorToken: token }),
                     });
 
+                    const data = await response.json();
+
                     if (!response.ok) {
-                        throw new Error('Invalid credentials');
+                        if (data.requiresTwoFactor) {
+                            twoFactorGroup?.setAttribute('style', 'display: block');
+                            errorDisplay.textContent = 'Please enter your 2FA code';
+                            (errorDisplay as HTMLElement).style.display = 'block';
+                            return;
+                        }
+                        throw new Error(data.error || 'Invalid credentials');
                     }
 
-                    const data = await response.json();
-                    localStorage.setItem('auth_token', data.token);
+                    localStorage.setItem('access_token', data.accessToken);
+                    localStorage.setItem('refresh_token', data.refreshToken);
                     this.router.navigate('/');
                 } catch (error) {
                     errorDisplay.textContent = error instanceof Error ? error.message : 'Login failed';
@@ -72,6 +87,13 @@ export class Login {
         if (toRegister) {
             toRegister.addEventListener('click', () => {
                 this.router.navigate('/register');
+            });
+        }
+
+        if (twoFactorToken) {
+            twoFactorToken.addEventListener('input', (e) => {
+                const input = e.target as HTMLInputElement;
+                input.value = input.value.replace(/[^0-9]/g, '');
             });
         }
     }

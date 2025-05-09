@@ -1,6 +1,8 @@
 const fastify = require('fastify')({ logger: true });
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
+const speakeasy = require('speakeasy');
+const QRCode = require('qrcode');
 const { db, initDatabase } = require('./database/init');
 
 // Initialize database
@@ -108,9 +110,101 @@ fastify.post('/register', async (request, reply) => {
   }
 });
 
+// Setup 2FA route
+fastify.post('/setup-2fa', { preHandler: authenticateToken }, async (request, reply) => {
+  try {
+    const secret = speakeasy.generateSecret({
+      name: `Transcendence:${request.user.email}`
+    });
+
+    return new Promise((resolve, reject) => {
+      db.run(
+        'UPDATE USER SET two_factor_secret = ? WHERE id = ?',
+        [secret.base32, request.user.id],
+        (err) => {
+          if (err) {
+            reply.code(500).send({ error: 'Error saving 2FA secret' });
+            reject(err);
+            return;
+          }
+
+          QRCode.toDataURL(secret.otpauth_url, (err, dataUrl) => {
+            if (err) {
+              reply.code(500).send({ error: 'Error generating QR code' });
+              reject(err);
+              return;
+            }
+
+            resolve({
+              secret: secret.base32,
+              qrCode: dataUrl
+            });
+          });
+        }
+      );
+    });
+  } catch (error) {
+    reply.code(500).send({ error: 'Error processing request' });
+  }
+});
+
+// Verify and enable 2FA route
+fastify.post('/verify-2fa', { preHandler: authenticateToken }, async (request, reply) => {
+  const { token } = request.body;
+
+  if (!token) {
+    return reply.code(400).send({ error: 'Token is required' });
+  }
+
+  try {
+    return new Promise((resolve, reject) => {
+      db.get('SELECT two_factor_secret FROM USER WHERE id = ?', [request.user.id], (err, user) => {
+        if (err) {
+          reply.code(500).send({ error: 'Database error' });
+          reject(err);
+          return;
+        }
+
+        if (!user || !user.two_factor_secret) {
+          reply.code(400).send({ error: '2FA not set up' });
+          resolve();
+          return;
+        }
+
+        const verified = speakeasy.totp.verify({
+          secret: user.two_factor_secret,
+          encoding: 'base32',
+          token: token
+        });
+
+        if (!verified) {
+          reply.code(400).send({ error: 'Invalid token' });
+          resolve();
+          return;
+        }
+
+        db.run(
+          'UPDATE USER SET two_factor_enabled = 1 WHERE id = ?',
+          [request.user.id],
+          (err) => {
+            if (err) {
+              reply.code(500).send({ error: 'Error enabling 2FA' });
+              reject(err);
+              return;
+            }
+            resolve({ message: '2FA enabled successfully' });
+          }
+        );
+      });
+    });
+  } catch (error) {
+    reply.code(500).send({ error: 'Error processing request' });
+  }
+});
+
 // Login route
 fastify.post('/login', async (request, reply) => {
-  const { username, password } = request.body;
+  const { username, password, twoFactorToken } = request.body;
 
   if (!username || !password) {
     return reply.code(400).send({ error: 'Username/Email and password are required' });
@@ -135,6 +229,27 @@ fastify.post('/login', async (request, reply) => {
           reply.code(401).send({ error: 'Invalid credentials' });
           resolve();
           return;
+        }
+
+        // Check if 2FA is enabled
+        if (user.two_factor_enabled) {
+          if (!twoFactorToken) {
+            reply.code(403).send({ error: '2FA token required', requiresTwoFactor: true });
+            resolve();
+            return;
+          }
+
+          const verified = speakeasy.totp.verify({
+            secret: user.two_factor_secret,
+            encoding: 'base32',
+            token: twoFactorToken
+          });
+
+          if (!verified) {
+            reply.code(401).send({ error: 'Invalid 2FA token' });
+            resolve();
+            return;
+          }
         }
 
         const accessToken = jwt.sign(
@@ -300,7 +415,7 @@ fastify.post('/logout', { preHandler: authenticateToken }, async (request, reply
 // Get current user route
 fastify.get('/me', { preHandler: authenticateToken }, async (request, reply) => {
   return new Promise((resolve, reject) => {
-    db.get('SELECT id, username, email FROM USER WHERE id = ?', [request.user.id], (err, user) => {
+    db.get('SELECT id, username, email, two_factor_enabled FROM USER WHERE id = ?', [request.user.id], (err, user) => {
       if (err) {
         reply.code(500).send({ error: 'Database error' });
         reject(err);

@@ -52,6 +52,6 @@ export class Router {
     }
 
     private isAuthenticated(): boolean {
-        return !!localStorage.getItem('auth_token');
+        return !!localStorage.getItem('access_token');
     }
 } 

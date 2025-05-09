@@ -418,18 +418,20 @@ body::before {
 
 /* Settings styles */
 .settings-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
     min-height: 100vh;
-    padding: 2rem;
     background: radial-gradient(circle at center, rgba(255, 0, 128, 0.1) 0%, transparent 80%);
 }
 
 .settings-content {
-    max-width: 800px;
-    margin: 0 auto;
+    padding: 2rem;
     background: rgba(0, 0, 0, 0.8);
     border: 2px solid #0ff;
     box-shadow: 0 0 20px #0ff;
-    padding: 2rem;
+    width: 100%;
+    max-width: 600px;
 }
 
 .settings-title {
@@ -442,92 +444,83 @@ body::before {
 
 .settings-section {
     margin-bottom: 2rem;
-    padding: 1.5rem;
-    border: 1px solid rgba(0, 255, 255, 0.3);
-    background: rgba(0, 0, 0, 0.5);
+    padding: 1rem;
+    border: 1px solid #0ff;
+    border-radius: 4px;
 }
 
 .settings-section h3 {
-    color: #f0f;
+    color: #0ff;
     font-size: 1.2rem;
-    margin-bottom: 1.5rem;
-    text-shadow: 0 0 8px #f0f;
+    margin-bottom: 1rem;
+    text-shadow: 0 0 8px #0ff;
 }
 
-.settings-form {
+.qr-container {
     display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
+    justify-content: center;
+    margin: 1rem 0;
+    padding: 1rem;
+    background: rgba(0, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+.qr-container img {
+    max-width: 200px;
+    height: auto;
 }
 
 .settings-button {
-    padding: 0.8rem;
+    padding: 0.8rem 1.5rem;
     background: #000;
-    border: 2px solid #0ff;
+    border: 1px solid #0ff;
     color: #0ff;
-    cursor: pointer;
     font-family: 'Press Start 2P', cursive;
     font-size: 0.8rem;
-    text-shadow: 0 0 8px #0ff;
-    box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 1rem;
+    width: 100%;
 }
 
 .settings-button:hover {
     background: #0ff;
     color: #000;
-    text-shadow: none;
+    box-shadow: 0 0 15px #0ff;
 }
 
 .settings-button.warning {
     border-color: #ff0;
     color: #ff0;
-    text-shadow: 0 0 8px #ff0;
 }
 
 .settings-button.warning:hover {
     background: #ff0;
     color: #000;
-    text-shadow: none;
+    box-shadow: 0 0 15px #ff0;
 }
 
 .settings-button.danger {
     border-color: #f00;
     color: #f00;
-    text-shadow: 0 0 8px #f00;
 }
 
 .settings-button.danger:hover {
     background: #f00;
     color: #000;
-    text-shadow: none;
+    box-shadow: 0 0 15px #f00;
 }
 
-.checkbox-group {
-    flex-direction: row;
-    align-items: center;
-    gap: 1rem;
+.settings-links {
+    margin-top: 2rem;
+    text-align: center;
 }
 
-.checkbox-group input[type="checkbox"] {
-    width: 20px;
-    height: 20px;
-    cursor: pointer;
-}
-
-select {
-    padding: 0.8rem;
-    background: #000;
-    border: 1px solid #0ff;
-    color: #fff;
-    font-family: 'Press Start 2P', cursive;
-    font-size: 0.8rem;
-    cursor: pointer;
-}
-
-select:focus {
-    outline: none;
-    border-color: #f0f;
-    box-shadow: 0 0 15px rgba(255, 0, 255, 0.4);
+#twoFactorStatus {
+    color: #0ff;
+    font-size: 1rem;
+    margin-bottom: 1rem;
+    text-shadow: 0 0 8px #0ff;
 }
 
 /* Responsive adjustments */

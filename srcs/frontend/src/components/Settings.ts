@@ -11,176 +11,204 @@ export class Settings {
 
         settingsContainer.innerHTML = `
             <div class="settings-content">
-                <h2 class="settings-title">SYSTEM SETTINGS</h2>
+                <h2 class="settings-title">SETTINGS</h2>
                 <div class="settings-section">
-                    <h3>PROFILE</h3>
-                    <form id="profileForm" class="settings-form">
+                    <h3>Two-Factor Authentication</h3>
+                    <div id="twoFactorStatus"></div>
+                    <div id="twoFactorSetup" style="display: none;">
+                        <div class="qr-container">
+                            <img id="qrCode" alt="2FA QR Code">
+                        </div>
                         <div class="form-group">
-                            <label for="displayName">DISPLAY NAME</label>
-                            <input type="text" id="displayName" name="displayName" required>
+                            <label for="twoFactorToken">Enter 6-digit code to verify</label>
+                            <input type="text" id="twoFactorToken" name="twoFactorToken" pattern="[0-9]{6}" maxlength="6" placeholder="Enter 6-digit code">
+                            <button id="verify2FA" class="settings-button">Verify and Enable 2FA</button>
                         </div>
-                        <div class="form-group">
-                            <label for="avatar">AVATAR URL</label>
-                            <input type="url" id="avatar" name="avatar">
-                        </div>
-                        <button type="submit" class="settings-button">UPDATE PROFILE</button>
-                    </form>
+                    </div>
+                    <button id="setup2FA" class="settings-button">Setup 2FA</button>
                 </div>
-
-                <div class="settings-section">
-                    <h3>GAME PREFERENCES</h3>
-                    <form id="preferencesForm" class="settings-form">
-                        <div class="form-group">
-                            <label for="difficulty">DIFFICULTY</label>
-                            <select id="difficulty" name="difficulty">
-                                <option value="easy">EASY</option>
-                                <option value="medium">MEDIUM</option>
-                                <option value="hard">HARD</option>
-                            </select>
-                        </div>
-                        <div class="form-group checkbox-group">
-                            <label>
-                                <input type="checkbox" id="soundEnabled" name="soundEnabled">
-                                SOUND EFFECTS
-                            </label>
-                        </div>
-                        <div class="form-group checkbox-group">
-                            <label>
-                                <input type="checkbox" id="musicEnabled" name="musicEnabled">
-                                BACKGROUND MUSIC
-                            </label>
-                        </div>
-                        <button type="submit" class="settings-button">SAVE PREFERENCES</button>
-                    </form>
-                </div>
-
-                <div class="settings-section">
-                    <h3>ACCOUNT</h3>
-                    <button id="changePassword" class="settings-button warning">CHANGE PASSWORD</button>
-                    <button id="logout" class="settings-button danger">LOGOUT</button>
-                </div>
-
-                <div class="settings-section">
-                    <button id="backToMenu" class="menu-button">RETURN TO MENU</button>
+                <div class="settings-links">
+                    <button class="text-button" id="backToMenu">BACK TO MENU</button>
                 </div>
             </div>
         `;
 
         this.container.appendChild(settingsContainer);
         this.setupEventListeners(settingsContainer);
-        this.loadUserSettings();
+        this.load2FAStatus();
     }
 
-    private async loadUserSettings(): Promise<void> {
+    private async load2FAStatus(): Promise<void> {
         try {
-            const response = await fetch('/api/user/settings', {
+            const response = await fetch('/api/auth/me', {
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`
                 }
             });
 
             if (!response.ok) {
-                throw new Error('Failed to load settings');
+                if (response.status === 401) {
+                    // Try to refresh the token
+                    const refreshResponse = await fetch('/api/auth/refresh', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            refreshToken: localStorage.getItem('refresh_token')
+                        })
+                    });
+
+                    if (refreshResponse.ok) {
+                        const data = await refreshResponse.json();
+                        localStorage.setItem('access_token', data.accessToken);
+                        // Retry the original request
+                        return this.load2FAStatus();
+                    } else {
+                        // If refresh fails, redirect to login
+                        this.router.navigate('/login');
+                        return;
+                    }
+                }
+                throw new Error('Failed to load user data');
             }
 
-            const settings = await response.json();
-            
-            // Populate form fields with user settings
-            const displayNameInput = document.getElementById('displayName') as HTMLInputElement;
-            const avatarInput = document.getElementById('avatar') as HTMLInputElement;
-            const difficultySelect = document.getElementById('difficulty') as HTMLSelectElement;
-            const soundCheckbox = document.getElementById('soundEnabled') as HTMLInputElement;
-            const musicCheckbox = document.getElementById('musicEnabled') as HTMLInputElement;
+            const user = await response.json();
+            const statusDiv = document.querySelector('#twoFactorStatus');
+            if (statusDiv) {
+                statusDiv.textContent = user.two_factor_enabled ? '2FA is enabled' : '2FA is not enabled';
+            }
 
-            if (displayNameInput) displayNameInput.value = settings.displayName || '';
-            if (avatarInput) avatarInput.value = settings.avatar || '';
-            if (difficultySelect) difficultySelect.value = settings.difficulty || 'medium';
-            if (soundCheckbox) soundCheckbox.checked = settings.soundEnabled ?? true;
-            if (musicCheckbox) musicCheckbox.checked = settings.musicEnabled ?? true;
+            const setupButton = document.querySelector('#setup2FA');
+            if (setupButton) {
+                setupButton.textContent = user.two_factor_enabled ? 'Disable 2FA' : 'Setup 2FA';
+            }
         } catch (error) {
-            console.error('Error loading settings:', error);
+            console.error('Error loading 2FA status:', error);
         }
     }
 
     private setupEventListeners(container: HTMLElement): void {
-        const profileForm = container.querySelector('#profileForm');
-        const preferencesForm = container.querySelector('#preferencesForm');
-        const changePasswordBtn = container.querySelector('#changePassword');
-        const logoutBtn = container.querySelector('#logout');
-        const backToMenuBtn = container.querySelector('#backToMenu');
+        const setupButton = container.querySelector('#setup2FA') as HTMLButtonElement;
+        const verifyButton = container.querySelector('#verify2FA') as HTMLButtonElement;
+        const backButton = container.querySelector('#backToMenu') as HTMLButtonElement;
+        const twoFactorToken = container.querySelector('#twoFactorToken') as HTMLInputElement;
+        const twoFactorSetup = container.querySelector('#twoFactorSetup');
 
-        if (profileForm) {
-            profileForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const formData = new FormData(e.target as HTMLFormElement);
-                
+        if (setupButton) {
+            setupButton.addEventListener('click', async () => {
                 try {
-                    const response = await fetch('/api/user/profile', {
-                        method: 'PUT',
+                    const response = await fetch('/api/auth/setup-2fa', {
+                        method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-                        },
-                        body: JSON.stringify({
-                            displayName: formData.get('displayName'),
-                            avatar: formData.get('avatar')
-                        })
+                            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                        }
                     });
 
                     if (!response.ok) {
-                        throw new Error('Failed to update profile');
+                        if (response.status === 401) {
+                            // Try to refresh the token
+                            const refreshResponse = await fetch('/api/auth/refresh', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    refreshToken: localStorage.getItem('refresh_token')
+                                })
+                            });
+
+                            if (refreshResponse.ok) {
+                                const data = await refreshResponse.json();
+                                localStorage.setItem('access_token', data.accessToken);
+                                // Retry the original request
+                                setupButton.click();
+                                return;
+                            } else {
+                                // If refresh fails, redirect to login
+                                this.router.navigate('/login');
+                                return;
+                            }
+                        }
+                        throw new Error('Failed to setup 2FA');
+                    }
+
+                    const data = await response.json();
+                    const qrCode = document.querySelector('#qrCode') as HTMLImageElement;
+                    if (qrCode) {
+                        qrCode.src = data.qrCode;
+                    }
+
+                    if (twoFactorSetup) {
+                        twoFactorSetup.setAttribute('style', 'display: block');
                     }
                 } catch (error) {
-                    console.error('Error updating profile:', error);
+                    console.error('Error setting up 2FA:', error);
                 }
             });
         }
 
-        if (preferencesForm) {
-            preferencesForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const formData = new FormData(e.target as HTMLFormElement);
-                
+        if (verifyButton && twoFactorToken) {
+            verifyButton.addEventListener('click', async () => {
                 try {
-                    const response = await fetch('/api/user/preferences', {
-                        method: 'PUT',
+                    const response = await fetch('/api/auth/verify-2fa', {
+                        method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+                            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                            'Content-Type': 'application/json'
                         },
-                        body: JSON.stringify({
-                            difficulty: formData.get('difficulty'),
-                            soundEnabled: formData.get('soundEnabled') === 'on',
-                            musicEnabled: formData.get('musicEnabled') === 'on'
-                        })
+                        body: JSON.stringify({ token: twoFactorToken.value })
                     });
 
                     if (!response.ok) {
-                        throw new Error('Failed to update preferences');
+                        if (response.status === 401) {
+                            // Try to refresh the token
+                            const refreshResponse = await fetch('/api/auth/refresh', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    refreshToken: localStorage.getItem('refresh_token')
+                                })
+                            });
+
+                            if (refreshResponse.ok) {
+                                const data = await refreshResponse.json();
+                                localStorage.setItem('access_token', data.accessToken);
+                                // Retry the original request
+                                verifyButton.click();
+                                return;
+                            } else {
+                                // If refresh fails, redirect to login
+                                this.router.navigate('/login');
+                                return;
+                            }
+                        }
+                        throw new Error('Failed to verify 2FA');
                     }
+
+                    await this.load2FAStatus();
+                    if (twoFactorSetup) {
+                        twoFactorSetup.setAttribute('style', 'display: none');
+                    }
+                    twoFactorToken.value = '';
                 } catch (error) {
-                    console.error('Error updating preferences:', error);
+                    console.error('Error verifying 2FA:', error);
                 }
             });
         }
 
-        if (changePasswordBtn) {
-            changePasswordBtn.addEventListener('click', () => {
-                // Implement password change modal or navigation
-                this.router.navigate('/change-password');
-            });
-        }
-
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', () => {
-                localStorage.removeItem('auth_token');
-                this.router.navigate('/login');
-            });
-        }
-
-        if (backToMenuBtn) {
-            backToMenuBtn.addEventListener('click', () => {
+        if (backButton) {
+            backButton.addEventListener('click', () => {
                 this.router.navigate('/');
+            });
+        }
+
+        if (twoFactorToken) {
+            twoFactorToken.addEventListener('input', (e) => {
+                const input = e.target as HTMLInputElement;
+                input.value = input.value.replace(/[^0-9]/g, '');
             });
         }
     }
