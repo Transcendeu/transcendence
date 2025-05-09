@@ -26,10 +26,20 @@ const authenticateToken = async (request, reply) => {
       throw new Error('Access token required');
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    if (!process.env.JWT_SECRET) {
+      throw new Error('JWT_SECRET environment variable is not set');
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     request.user = decoded;
   } catch (err) {
-    reply.code(401).send({ error: 'Invalid token' });
+    if (err.name === 'TokenExpiredError') {
+      reply.code(401).send({ error: 'Token has expired' });
+    } else if (err.name === 'JsonWebTokenError') {
+      reply.code(401).send({ error: 'Invalid token' });
+    } else {
+      reply.code(401).send({ error: err.message });
+    }
   }
 };
 
@@ -63,18 +73,18 @@ fastify.post('/register', async (request, reply) => {
           const userId = this.lastID;
           const accessToken = jwt.sign(
             { id: userId, email },
-            process.env.JWT_SECRET || 'your-secret-key',
-            { expiresIn: '1h' }
+            process.env.JWT_SECRET,
+            { expiresIn: '15m' }
           );
 
           const refreshToken = jwt.sign(
             { id: userId },
-            process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key',
+            process.env.JWT_REFRESH_SECRET,
             { expiresIn: '7d' }
           );
 
           const expiresAt = new Date();
-          expiresAt.setHours(expiresAt.getHours() + 1);
+          expiresAt.setMinutes(expiresAt.getMinutes() + 15);
 
           // First mark any existing auth records as revoked
           db.run('UPDATE AUTH SET revoked = 1 WHERE user_id = ?', [userId], (err) => {
@@ -254,18 +264,18 @@ fastify.post('/login', async (request, reply) => {
 
         const accessToken = jwt.sign(
           { id: user.id, email: user.email },
-          process.env.JWT_SECRET || 'your-secret-key',
-          { expiresIn: '1h' }
+          process.env.JWT_SECRET,
+          { expiresIn: '15m' }
         );
 
         const refreshToken = jwt.sign(
           { id: user.id },
-          process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key',
+          process.env.JWT_REFRESH_SECRET,
           { expiresIn: '7d' }
         );
 
         const expiresAt = new Date();
-        expiresAt.setHours(expiresAt.getHours() + 1);
+        expiresAt.setMinutes(expiresAt.getMinutes() + 15);
 
         // First check if an auth record exists for this user
         db.get('SELECT id FROM AUTH WHERE user_id = ? AND revoked = 0', [user.id], (err, existingAuth) => {
@@ -329,65 +339,72 @@ fastify.post('/refresh', async (request, reply) => {
     return reply.code(401).send({ error: 'Refresh token required' });
   }
 
+  if (!process.env.JWT_REFRESH_SECRET) {
+    return reply.code(500).send({ error: 'JWT_REFRESH_SECRET environment variable is not set' });
+  }
+
   try {
-    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key');
-    const accessToken = jwt.sign(
-      { id: decoded.id },
-      process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '1h' }
-    );
-
-    const refreshToken = jwt.sign(
-      { id: decoded.id },
-      process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key',
-      { expiresIn: '7d' }
-    );
-
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 1);
-
+    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+    
+    // Check if the refresh token is revoked
     return new Promise((resolve, reject) => {
-      // First check if an auth record exists for this user
-      db.get('SELECT id FROM AUTH WHERE user_id = ? AND revoked = 0', [decoded.id], (err, existingAuth) => {
-        if (err) {
-          reply.code(500).send({ error: 'Error checking existing auth record' });
-          reject(err);
-          return;
-        }
+      db.get('SELECT id FROM AUTH WHERE user_id = ? AND refresh_token = ? AND revoked = 0', 
+        [decoded.id, refreshToken], 
+        (err, existingAuth) => {
+          if (err) {
+            reply.code(500).send({ error: 'Error checking existing auth record' });
+            reject(err);
+            return;
+          }
 
-        if (existingAuth) {
-          // Update existing auth record
+          if (!existingAuth) {
+            reply.code(401).send({ error: 'Refresh token has been revoked' });
+            resolve();
+            return;
+          }
+
+          const newAccessToken = jwt.sign(
+            { id: decoded.id },
+            process.env.JWT_SECRET,
+            { expiresIn: '15m' }
+          );
+
+          const newRefreshToken = jwt.sign(
+            { id: decoded.id },
+            process.env.JWT_REFRESH_SECRET,
+            { expiresIn: '7d' }
+          );
+
+          const expiresAt = new Date();
+          expiresAt.setMinutes(expiresAt.getMinutes() + 15);
+
+          // Update the auth record with new tokens
           db.run(
-            'UPDATE AUTH SET access_token = ?, expires_at = ? WHERE id = ?',
-            [accessToken, expiresAt.toISOString(), existingAuth.id],
+            'UPDATE AUTH SET access_token = ?, refresh_token = ?, expires_at = ? WHERE id = ?',
+            [newAccessToken, newRefreshToken, expiresAt.toISOString(), existingAuth.id],
             (err) => {
               if (err) {
                 reply.code(500).send({ error: 'Error updating auth record' });
                 reject(err);
                 return;
               }
-              resolve({ accessToken });
-            }
-          );
-        } else {
-          // Create new auth record
-          db.run(
-            'INSERT INTO AUTH (user_id, access_token, refresh_token, expires_at) VALUES (?, ?, ?, ?)',
-            [decoded.id, accessToken, refreshToken, expiresAt.toISOString()],
-            (err) => {
-              if (err) {
-                reply.code(500).send({ error: 'Error creating auth record' });
-                reject(err);
-                return;
-              }
-              resolve({ accessToken });
+              resolve({ 
+                accessToken: newAccessToken,
+                refreshToken: newRefreshToken
+              });
             }
           );
         }
-      });
+      );
     });
   } catch (error) {
-    reply.code(403).send({ error: 'Invalid refresh token' });
+    if (error.name === 'TokenExpiredError') {
+      reply.code(401).send({ error: 'Refresh token has expired' });
+    } else if (error.name === 'JsonWebTokenError') {
+      reply.code(401).send({ error: 'Invalid refresh token' });
+    } else {
+      reply.code(500).send({ error: 'Error processing refresh token' });
+    }
   }
 });
 

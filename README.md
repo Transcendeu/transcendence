@@ -9,8 +9,8 @@ Go go Horseranger
         - [x] Configurar WFA
         - [x] Configurar frontend no webapp
 - [ ] Corrigir api/auth:
-    - [ ] Habilitar 2FA
-    - [ ] Corrigir o JWT
+    - [x] Habilitar 2FA
+    - [X] Corrigir o JWT
     - [ ] Habilitar login com Google
 - [ ] Criar api/user:
     - [ ] Criar infra e script básico
