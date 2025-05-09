@@ -2,6 +2,7 @@
   "name": "pong-game",
   "version": "1.0.0",
   "description": "A modern Pong game implementation using TypeScript",
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
@@ -10,6 +11,7 @@
   "devDependencies": {
     "@types/node": "^18.15.11",
     "typescript": "^5.0.2",
-    "vite": "^4.3.4"
+    "vite": "^4.3.4",
+    "terser": "^5.14.2"
   }
 }

@@ -24,7 +24,6 @@ services:
       - "80:80"
     depends_on:
       - auth
-      - frontend
     networks:
       - transcendence_network
 
@@ -32,6 +31,17 @@ services:
     build:
       context: ./srcs/frontend
       dockerfile: Dockerfile
+    networks:
+      - transcendence_network
+
+  web-nginx:
+    build:
+      context: ./srcs/web_nginx
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      - frontend
     networks:
       - transcendence_network
 

@@ -3,12 +3,11 @@ Go go Horseranger
 
 # TODO:
 
-- [ ] Corrigir a infra:
-    - [ ] Criar um segundo nginx para servir de wep-application:
-        - [ ] Configurar ModSecurity
-        - [ ] Configurar WFA
-        - [ ] Configurar frontend no webapp
-    - [ ] Conectar o webapp com o api-gateway
+- [x] Corrigir a infra:
+    - [x] Criar um segundo nginx para servir de wep-application:
+        - [x] Configurar ModSecurity
+        - [x] Configurar WFA
+        - [x] Configurar frontend no webapp
 - [ ] Corrigir api/auth:
     - [ ] Habilitar 2FA
     - [ ] Corrigir o JWT
@@ -20,3 +19,7 @@ Go go Horseranger
     - [ ] Comunicação de jogo online
     - [ ] Registro de partidas
     - [ ] Criação de DB
+
+# Referencias
+
+https://medium.com/codelogicx/securing-nginx-server-using-modsecurity-oswaf-7ba79906d84c

@@ -3,7 +3,7 @@ import path from 'path';
 
 export default defineConfig({
   root: '.',
-  base: './',
+  base: '/',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -11,11 +11,17 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    open: true
+    host: true,
+    watch: {
+      usePolling: true
+    }
   },
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
-    emptyOutDir: true
+    emptyOutDir: true,
+    sourcemap: true,
+    target: 'esnext',
+    minify: 'terser'
   }
 }); 
