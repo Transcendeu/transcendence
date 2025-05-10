@@ -1,25 +1,112 @@
 import { Router } from '../router/Router';
 
+interface UserData {
+    id: number;
+    email: string;
+    username: string;
+    status: string;
+    accessToken: string;
+    refreshToken: string;
+}
+
 export class Menu {
     private container: HTMLElement;
     private router: Router;
+    private userData: UserData | null = null;
 
     constructor(container: HTMLElement, router: Router) {
         this.container = container;
         this.router = router;
+        this.handleGoogleCallback();
+        this.loadUserData();
         this.render();
     }
 
-    private isAuthenticated(): boolean {
-        return !!localStorage.getItem('auth_token');
+    private loadUserData(): void {
+        console.log('Loading user data...');
+        const storedData = localStorage.getItem('user_data');
+        if (storedData) {
+            console.log('Found user data in localStorage:', storedData);
+            try {
+                this.userData = JSON.parse(storedData);
+                console.log('Loaded user data:', this.userData);
+            } catch (error) {
+                console.error('Error parsing stored user data:', error);
+                this.userData = null;
+            }
+        } else {
+            console.log('No user data found in localStorage');
+            this.userData = null;
+        }
     }
 
-    private render(): void {
+    private handleGoogleCallback(): void {
+        console.log('Handling Google callback...');
+        const urlParams = new URLSearchParams(window.location.search);
+        const data = urlParams.get('data');
+        
+        if (data) {
+            console.log('Found data in URL:', data);
+            try {
+                // Decode the base64 string, handling URL-safe base64
+                const base64Data = data.replace(/-/g, '+').replace(/_/g, '/');
+                const decodedData = JSON.parse(atob(base64Data)) as UserData;
+                console.log('Decoded user data:', decodedData);
+                this.userData = decodedData;
+                
+                // Store user data in localStorage
+                localStorage.setItem('user_data', JSON.stringify(decodedData));
+                
+                // Remove the data parameter from URL and update the page
+                window.history.replaceState({}, document.title, '/');
+                console.log('Updated URL and rendering menu...');
+                this.render();
+            } catch (error) {
+                console.error('Error parsing user data:', error);
+                // Try to get user data from localStorage as fallback
+                this.loadUserData();
+            }
+        } else {
+            console.log('No data in URL, loading from localStorage...');
+            this.loadUserData();
+        }
+    }
+
+    private isAuthenticated(): boolean {
+        const userData = localStorage.getItem('user_data');
+        if (!userData) {
+            console.log('No user data found in localStorage');
+            return false;
+        }
+
+        try {
+            const parsedData = JSON.parse(userData) as UserData;
+            const hasTokens = Boolean(parsedData.accessToken && parsedData.refreshToken);
+            console.log('Checking authentication:', { 
+                hasUserData: true, 
+                hasTokens,
+                userData: parsedData 
+            });
+            return hasTokens;
+        } catch (error) {
+            console.error('Error checking authentication:', error);
+            return false;
+        }
+    }
+
+    public render(): void {
         const isAuth = this.isAuthenticated();
+        console.log('Rendering menu, isAuth:', isAuth, 'userData:', this.userData);
         
         this.container.innerHTML = `
             <div class="menu-container">
                 <h1 class="menu-title">DUCKONG</h1>
+                ${isAuth && this.userData ? `
+                    <div class="user-info">
+                        <span class="username">${this.userData.username}</span>
+                        <span class="status ${this.userData.status}">${this.userData.status}</span>
+                    </div>
+                ` : ''}
                 <div class="menu-buttons">
                     <button class="menu-button" id="local-game">LOCAL GAME</button>
                     <button class="menu-button" id="local-tournament">LOCAL TOURNAMENT</button>
@@ -74,19 +161,31 @@ export class Menu {
 
     private async loadUserStats(): Promise<void> {
         try {
+            const userData = localStorage.getItem('user_data');
+            if (!userData) {
+                console.error('No user data found');
+                return;
+            }
+
+            const parsedData = JSON.parse(userData) as UserData;
+            console.log('Loading user stats for user:', parsedData);
             const response = await fetch('/api/user/stats', {
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+                    'Authorization': `Bearer ${parsedData.accessToken}`,
+                    'Content-Type': 'application/json'
                 }
             });
 
             if (response.ok) {
                 const stats = await response.json();
+                console.log('Received user stats:', stats);
                 const winsElement = document.getElementById('wins');
                 const rankElement = document.getElementById('rank');
 
                 if (winsElement) winsElement.textContent = stats.wins.toString();
                 if (rankElement) rankElement.textContent = stats.rank || '-';
+            } else {
+                console.error('Failed to load user stats:', response.status);
             }
         } catch (error) {
             console.error('Error loading user stats:', error);
@@ -148,22 +247,41 @@ export class Menu {
 
         if (googleLoginBtn) {
             googleLoginBtn.addEventListener('click', () => {
-                // For now, just show a message that this feature is coming soon
-                const menuContainer = document.querySelector('.menu-container');
-                if (menuContainer) {
-                    const message = document.createElement('div');
-                    message.className = 'menu-message';
-                    message.textContent = 'Google login coming soon!';
-                    menuContainer.appendChild(message);
-                    setTimeout(() => message.remove(), 3000);
-                }
+                window.location.href = '/api/auth/google';
             });
         }
 
         if (logoutBtn) {
-            logoutBtn.addEventListener('click', () => {
-                localStorage.removeItem('auth_token');
-                this.render();
+            logoutBtn.addEventListener('click', async () => {
+                try {
+                    const userData = localStorage.getItem('user_data');
+                    if (!userData) {
+                        console.error('No user data found for logout');
+                        return;
+                    }
+
+                    const parsedData = JSON.parse(userData) as UserData;
+                    console.log('Logging out user:', parsedData);
+                    const response = await fetch('/api/auth/logout', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${parsedData.accessToken}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (response.ok) {
+                        console.log('Logout successful');
+                    } else {
+                        console.error('Logout failed:', response.status);
+                    }
+                } catch (error) {
+                    console.error('Error during logout:', error);
+                } finally {
+                    localStorage.removeItem('user_data');
+                    this.userData = null;
+                    this.render();
+                }
             });
         }
     }

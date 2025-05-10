@@ -22,43 +22,59 @@ export class App {
     private setupRoutes(): void {
         // Public routes
         this.router.addRoute('/', () => {
+            console.log('Rendering root route');
             this.container.innerHTML = '';
-            new Menu(this.container, this.router);
+            const menu = new Menu(this.container, this.router);
+            menu.render();
+        });
+
+        this.router.addRoute('/menu', () => {
+            console.log('Rendering menu route');
+            this.container.innerHTML = '';
+            const menu = new Menu(this.container, this.router);
+            menu.render();
         });
 
         this.router.addRoute('/login', () => {
+            console.log('Rendering login route');
             this.container.innerHTML = '';
             new Login(this.container, this.router);
         });
 
         this.router.addRoute('/register', () => {
+            console.log('Rendering register route');
             this.container.innerHTML = '';
             new Register(this.container, this.router);
         });
 
         // Game routes
         this.router.addRoute('/game/local', () => {
+            console.log('Rendering local game route');
             this.container.innerHTML = '';
             return this.startLocalGame();
         });
 
         this.router.addRoute('/game/local-tournament', () => {
+            console.log('Rendering local tournament route');
             this.container.innerHTML = '';
             new LocalTournament(this.container, this.router);
         });
 
         // Protected routes
         this.router.addRoute('/game/online', () => {
+            console.log('Rendering online game route');
             this.container.innerHTML = '';
             return this.startOnlineGame();
         }, { requiresAuth: true });
 
         this.router.addRoute('/tournament', () => {
+            console.log('Rendering tournament route');
             this.container.innerHTML = '';
             return this.startTournament();
         }, { requiresAuth: true });
 
         this.router.addRoute('/settings', () => {
+            console.log('Rendering settings route');
             this.container.innerHTML = '';
             new Settings(this.container, this.router);
         }, { requiresAuth: true });

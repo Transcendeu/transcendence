@@ -3,3 +3,4 @@ srcs/frontend/package-lock.json
 .cursor/rules/noframework.mdc
 .cursor/rules/rulesets.mdc
 .gitignore
+srcs/auth/.env

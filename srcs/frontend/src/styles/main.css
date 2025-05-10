@@ -657,4 +657,38 @@ body::before {
     font-size: 1rem;
     margin-bottom: 2rem;
     text-shadow: 0 0 8px #f0f;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    padding: 0.5rem 1rem;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+}
+
+.username {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #fff;
+}
+
+.status {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.status.online {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.status.offline {
+    background-color: #9E9E9E;
+    color: white;
 } 

@@ -21,6 +21,8 @@ const initDatabase = () => {
         password TEXT NOT NULL,
         two_factor_secret TEXT,
         two_factor_enabled BOOLEAN DEFAULT 0,
+        status TEXT DEFAULT 'offline',
+        last_seen DATETIME DEFAULT CURRENT_TIMESTAMP,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`);

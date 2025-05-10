@@ -13,6 +13,8 @@ services:
       - PORT=3000
       - JWT_SECRET=your_jwt_secret_key_here
       - JWT_REFRESH_SECRET=your_jwt_refresh_secret_key_here
+    env_file:
+      - ./srcs/auth/.env
     networks:
       - transcendence_network
 
