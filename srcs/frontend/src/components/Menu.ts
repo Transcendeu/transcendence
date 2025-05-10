@@ -41,6 +41,10 @@ export class Menu {
                         <div class="auth-menu">
                             <button class="auth-button" id="login">LOGIN</button>
                             <button class="auth-button" id="register">REGISTER</button>
+                            <button class="google-login-button" id="googleLogin">
+                                <img src="/google-icon.svg" alt="Google Icon" class="google-icon">
+                                Login with Google
+                            </button>
                         </div>
                     `}
                 </div>
@@ -98,6 +102,7 @@ export class Menu {
         const loginBtn = document.getElementById('login');
         const registerBtn = document.getElementById('register');
         const logoutBtn = document.getElementById('logout');
+        const googleLoginBtn = document.getElementById('googleLogin');
 
         if (localGameBtn) {
             localGameBtn.addEventListener('click', () => {
@@ -138,6 +143,20 @@ export class Menu {
         if (registerBtn) {
             registerBtn.addEventListener('click', () => {
                 this.router.navigate('/register');
+            });
+        }
+
+        if (googleLoginBtn) {
+            googleLoginBtn.addEventListener('click', () => {
+                // For now, just show a message that this feature is coming soon
+                const menuContainer = document.querySelector('.menu-container');
+                if (menuContainer) {
+                    const message = document.createElement('div');
+                    message.className = 'menu-message';
+                    message.textContent = 'Google login coming soon!';
+                    menuContainer.appendChild(message);
+                    setTimeout(() => message.remove(), 3000);
+                }
             });
         }
 

@@ -31,6 +31,12 @@ export class Login {
                 <div class="auth-links">
                     <button class="text-button" id="toRegister">NEW USER? REGISTER</button>
                 </div>
+                <div class="google-login-container">
+                    <button type="button" class="google-login-button" id="googleLogin">
+                        <img src="/google-icon.svg" alt="Google Icon" class="google-icon">
+                        Login with Google
+                    </button>
+                </div>
             </div>
         `;
 
@@ -41,6 +47,7 @@ export class Login {
     private setupEventListeners(container: HTMLElement): void {
         const loginForm = container.querySelector('#loginForm');
         const toRegister = container.querySelector('#toRegister');
+        const googleLogin = container.querySelector('#googleLogin');
         const errorDisplay = container.querySelector('#loginError');
         const twoFactorGroup = container.querySelector('#twoFactorGroup');
         const twoFactorToken = container.querySelector('#twoFactorToken') as HTMLInputElement;
@@ -87,6 +94,15 @@ export class Login {
         if (toRegister) {
             toRegister.addEventListener('click', () => {
                 this.router.navigate('/register');
+            });
+        }
+
+        if (googleLogin) {
+            googleLogin.addEventListener('click', () => {
+                if (errorDisplay) {
+                    errorDisplay.textContent = 'Google login coming soon!';
+                    (errorDisplay as HTMLElement).style.display = 'block';
+                }
             });
         }
 
