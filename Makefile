@@ -1,16 +1,16 @@
 .PHONY: up down build logs clean
 
 up:
-	docker compose up -d
+	docker-compose up -d
 
 down:
-	docker compose down
+	docker-compose down
 
 build:
-	docker compose build
+	docker-compose build
 
 logs:
-	docker compose logs -f auth
+	docker-compose logs -f auth
 
 clean: down
 	docker system prune -a

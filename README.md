@@ -21,26 +21,37 @@ The project consists of multiple services:
 
 ## Features
 
-### Authentication (api/auth)
+### Frontend - Indy
+
+- [ ] Tailwind CSS
+
+### Authentication (api/auth) - Fer
 - [x] Two-Factor Authentication (2FA)
 - [x] JWT-based authentication
-- [ ] Google OAuth integration
+- [x] Google OAuth integration
 
-### User Management (api/user)
-- [ ] User profile management
-- [ ] Database migration from auth service
-- [ ] User data persistence
+![WARN] - Faltando session token não salvo no localstorage.
+![WARN] - /register retornando 400.
+![WARN] - Senha não encriptada no frontend.
 
-### Game Service (api/game)
+### Game Service (api/game) / Remote Player - Nico
 - [ ] Real-time game communication
 - [ ] Match history and statistics
 - [ ] Game database implementation
 
-### Infrastructure
+### Infrastructure - Indy
 - [x] Nginx web server configuration
 - [x] ModSecurity implementation
 - [x] Web Application Firewall (WAF)
 - [x] Frontend deployment setup
+- [ ] Vault Hashicorp
+
+### CLI - Mark
+- [ ] Replacing Basic Pong with Server-Side Pong and Implementing an API
+- [ ] Enabling Pong Gameplay via CLI against Web Users with API Integration
+
+### - Deploy em Prod
+- [ ] duckong.net - Vercel
 
 ## Setup Instructions
 
@@ -106,3 +117,5 @@ Please read our contributing guidelines before submitting pull requests.
 ## License
 
 [Add your license information here]
+
+https://tcdmodules.vercel.app/v14?state=100966471
