@@ -128,8 +128,11 @@ export class PongGame {
         this.ball.draw(this.context);
 
         // Update score display
-        document.getElementById('score1')!.textContent = this.score.player1.toString();
-        document.getElementById('score2')!.textContent = this.score.player2.toString();
+        const score1Element = document.getElementById('score1');
+        const score2Element = document.getElementById('score2');
+        
+        if (score1Element) score1Element.textContent = this.score.player1.toString();
+        if (score2Element) score2Element.textContent = this.score.player2.toString();
     }
 
     private checkCollisions(): void {
