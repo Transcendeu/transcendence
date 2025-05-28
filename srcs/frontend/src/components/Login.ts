@@ -74,9 +74,22 @@ export class Login {
                         throw new Error(data.error || 'Invalid credentials');
                     }
 
+                    // Store user data and tokens
+                    const userData = {
+                        id: data.id,
+                        email: data.email,
+                        username: data.username,
+                        status: 'online',
+                        accessToken: data.accessToken,
+                        refreshToken: data.refreshToken
+                    };
+                    
+                    localStorage.setItem('user_data', JSON.stringify(userData));
                     localStorage.setItem('access_token', data.accessToken);
                     localStorage.setItem('refresh_token', data.refreshToken);
-                    this.router.navigate('/');
+                    
+                    // Force a page reload to ensure proper state
+                    window.location.href = '/';
                 } catch (error) {
                     errorDisplay.textContent = error instanceof Error ? error.message : 'Login failed';
                     (errorDisplay as HTMLElement).style.display = 'block';
