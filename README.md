@@ -31,7 +31,7 @@ The project consists of multiple services:
 - [x] Google OAuth integration
 
 ![WARN] - Faltando session token não salvo no localstorage.
-![WARN] - /register retornando 400.
+![FIXED] - /register retornando 400. 
 ![WARN] - Senha não encriptada no frontend.
 
 ### Game Service (api/game) / Remote Player - Nico
