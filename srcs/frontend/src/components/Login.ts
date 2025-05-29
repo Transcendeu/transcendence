@@ -76,9 +76,9 @@ export class Login {
 
                     // Store user data and tokens
                     const userData = {
-                        id: data.id,
-                        email: data.email,
-                        username: data.username,
+                        id: data.user.id,
+                        email: data.user.email,
+                        username: data.user.username,
                         status: 'online',
                         accessToken: data.accessToken,
                         refreshToken: data.refreshToken

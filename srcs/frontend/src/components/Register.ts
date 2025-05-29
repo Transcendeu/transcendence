@@ -89,8 +89,28 @@ export class Register {
                     }
 
                     const data = await loginResponse.json();
-                    localStorage.setItem('auth_token', data.token);
-                    this.router.navigate('/');
+                    
+                    // Store user data and tokens
+                    const userData = {
+                        id: data.user.id,
+                        email: data.user.email,
+                        username: data.user.username,
+                        status: 'online',
+                        accessToken: data.accessToken,
+                        refreshToken: data.refreshToken
+                    };
+                    
+                    localStorage.setItem('user_data', JSON.stringify(userData));
+                    localStorage.setItem('access_token', data.accessToken);
+                    localStorage.setItem('refresh_token', data.refreshToken);
+                    
+                    // Redirect to menu with user data
+                    const encodedData = btoa(JSON.stringify(userData))
+                        .replace(/\+/g, '-')
+                        .replace(/\//g, '_')
+                        .replace(/=+$/, '');
+                    
+                    window.location.href = `/?data=${encodedData}`;
                 } catch (error) {
                     errorDisplay.textContent = error instanceof Error ? error.message : 'Registration failed';
                     (errorDisplay as HTMLElement).style.display = 'block';
