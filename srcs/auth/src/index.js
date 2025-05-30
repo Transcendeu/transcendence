@@ -503,150 +503,220 @@ fastify.get('/google/callback', async (request, reply) => {
     console.log('Got user info:', user);
     
     // Find or create user in DB
-    return new Promise(async (resolve, reject) => {
-      db.get('SELECT * FROM USER WHERE email = ?', [user.email], async (err, dbUser) => {
+    return new Promise((resolve, reject) => {
+      db.get('SELECT * FROM USER WHERE email = ?', [user.email], async (err, existingUser) => {
         if (err) {
           console.error('Database error:', err);
-          return reply.code(500).send({ error: 'Database error' });
+          reply.code(500).send({ error: 'Database error' });
+          reject(err);
+          return;
         }
 
-        let userId = dbUser && dbUser.id;
-        if (!dbUser) {
-          console.log('Creating new user...');
-          // Create new user with random password
-          const randomPassword = Math.random().toString(36).slice(-8);
-          const hashedPassword = await bcrypt.hash(randomPassword, 10);
-          db.run(
-            'INSERT INTO USER (username, email, password, status) VALUES (?, ?, ?, ?)',
-            [user.name || user.email, user.email, hashedPassword, 'online'],
-            async function (err) {
-              if (err) {
-                console.error('Error creating user:', err);
-                return reply.code(500).send({ error: 'Error creating user' });
-              }
-              userId = this.lastID;
-              console.log('New user created with ID:', userId);
-              await issueJwtAndRedirect(userId, user.email, user.name || user.email, reply);
-              resolve();
-            }
-          );
+        let userId;
+        if (existingUser) {
+          userId = existingUser.id;
+          // Check if 2FA is enabled
+          if (existingUser.two_factor_enabled) {
+            // Generate a temporary token for 2FA verification
+            const tempToken = jwt.sign(
+              { id: userId, email: user.email, temp: true },
+              process.env.JWT_SECRET,
+              { expiresIn: '5m' }
+            );
+            
+            // Redirect to frontend with temp token and 2FA required flag
+            const redirectData = {
+              requiresTwoFactor: true,
+              tempToken: tempToken,
+              email: user.email,
+              username: existingUser.username
+            };
+            const base64Data = Buffer.from(JSON.stringify(redirectData)).toString('base64');
+            reply.redirect(`/?data=${base64Data}`);
+            resolve();
+            return;
+          }
         } else {
-          console.log('Updating existing user:', dbUser);
-          // Update user status to online
-          db.run(
-            'UPDATE USER SET status = ?, last_seen = CURRENT_TIMESTAMP WHERE id = ?',
-            ['online', userId],
-            async (err) => {
-              if (err) {
-                console.error('Error updating user status:', err);
+          // Create new user with a proper username
+          const baseUsername = user.name || user.email.split('@')[0];
+          let username = baseUsername;
+          let counter = 1;
+          
+          // Check if username exists and append a number if it does
+          while (true) {
+            const existingUsername = await new Promise((resolve) => {
+              db.get('SELECT id FROM USER WHERE username = ?', [username], (err, row) => {
+                resolve(row);
+              });
+            });
+            
+            if (!existingUsername) break;
+            username = `${baseUsername}${counter}`;
+            counter++;
+          }
+
+          const result = await new Promise((resolve, reject) => {
+            db.run(
+              'INSERT INTO USER (username, email, password, status) VALUES (?, ?, ?, ?)',
+              [username, user.email, 'google-auth', 'online'],
+              function(err) {
+                if (err) reject(err);
+                else resolve(this.lastID);
               }
-              await issueJwtAndRedirect(userId, user.email, dbUser.username, reply);
-              resolve();
+            );
+          });
+          userId = result;
+        }
+
+        // Generate tokens for successful login
+        const accessToken = jwt.sign(
+          { id: userId, email: user.email },
+          process.env.JWT_SECRET,
+          { expiresIn: '15m' }
+        );
+
+        const refreshToken = jwt.sign(
+          { id: userId },
+          process.env.JWT_REFRESH_SECRET,
+          { expiresIn: '7d' }
+        );
+
+        // Store tokens in database
+        await new Promise((resolve, reject) => {
+          const expiresAt = new Date();
+          expiresAt.setMinutes(expiresAt.getMinutes() + 15);
+          
+          db.run(
+            'INSERT INTO AUTH (user_id, access_token, refresh_token, expires_at, auth_provider) VALUES (?, ?, ?, ?, ?)',
+            [userId, accessToken, refreshToken, expiresAt.toISOString(), 'google'],
+            (err) => {
+              if (err) reject(err);
+              else resolve();
             }
           );
-        }
+        });
+
+        // Get the user's username
+        const userRow = await new Promise((resolve, reject) => {
+          db.get('SELECT username FROM USER WHERE id = ?', [userId], (err, row) => {
+            if (err) reject(err);
+            else resolve(row);
+          });
+        });
+
+        // Prepare user data for frontend
+        const userData = {
+          id: userId,
+          email: user.email,
+          username: userRow.username,
+          status: 'online',
+          accessToken,
+          refreshToken
+        };
+
+        // Encode user data for URL
+        const base64Data = Buffer.from(JSON.stringify(userData)).toString('base64');
+        reply.redirect(`/?data=${base64Data}`);
+        resolve();
       });
     });
   } catch (e) {
     console.error('Google OAuth error:', e);
     if (e.message.includes('invalid_grant')) {
-      // If the code has already been used, redirect to login
       return reply.redirect('/login');
     }
     return reply.code(500).send({ error: 'Google OAuth error', details: e.message });
   }
 });
 
-async function issueJwtAndRedirect(userId, email, username, reply) {
-  console.log('Issuing JWT and redirecting for user:', { userId, email, username });
-  
-  // Create tokens
-  const accessToken = jwt.sign(
-    { id: userId, email, username },
-    process.env.JWT_SECRET,
-    { expiresIn: '15m' }
-  );
-  const refreshToken = jwt.sign(
-    { id: userId },
-    process.env.JWT_REFRESH_SECRET,
-    { expiresIn: '7d' }
-  );
+// Add new route to handle 2FA verification for Google login
+fastify.post('/verify-google-2fa', async (request, reply) => {
+  const { tempToken, twoFactorToken } = request.body;
 
-  // Create user data object
-  const userData = {
-    id: userId,
-    email,
-    username,
-    status: 'online',
-    accessToken,
-    refreshToken
-  };
-  
-  // Use URL-safe base64 encoding
-  const encodedData = Buffer.from(JSON.stringify(userData))
-    .toString('base64')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '');
-    
-  console.log('Redirecting with data:', userData);
-  const redirectUrl = `/?data=${encodedData}`;
-  console.log('Redirect URL:', redirectUrl);
-
-  // Store the auth record in the database
-  const expiresAt = new Date();
-  expiresAt.setMinutes(expiresAt.getMinutes() + 15);
+  if (!tempToken || !twoFactorToken) {
+    return reply.code(400).send({ error: 'Missing required tokens' });
+  }
 
   try {
-    // First mark any existing auth records as revoked
-    await new Promise((resolve, reject) => {
-      db.run('UPDATE AUTH SET revoked = 1 WHERE user_id = ?', [userId], (err) => {
+    // Verify temp token
+    const decoded = jwt.verify(tempToken, process.env.JWT_SECRET);
+    if (!decoded.temp) {
+      return reply.code(400).send({ error: 'Invalid temporary token' });
+    }
+
+    // Get user from database
+    return new Promise((resolve, reject) => {
+      db.get('SELECT * FROM USER WHERE id = ?', [decoded.id], async (err, user) => {
         if (err) {
-          console.error('Error updating old auth records:', err);
+          reply.code(500).send({ error: 'Database error' });
           reject(err);
           return;
         }
-        resolve();
+
+        if (!user || !user.two_factor_secret) {
+          reply.code(400).send({ error: '2FA not set up' });
+          resolve();
+          return;
+        }
+
+        // Verify 2FA token
+        const verified = speakeasy.totp.verify({
+          secret: user.two_factor_secret,
+          encoding: 'base32',
+          token: twoFactorToken
+        });
+
+        if (!verified) {
+          reply.code(401).send({ error: 'Invalid 2FA token' });
+          resolve();
+          return;
+        }
+
+        // Generate final tokens
+        const accessToken = jwt.sign(
+          { id: user.id, email: user.email },
+          process.env.JWT_SECRET,
+          { expiresIn: '15m' }
+        );
+
+        const refreshToken = jwt.sign(
+          { id: user.id },
+          process.env.JWT_REFRESH_SECRET,
+          { expiresIn: '7d' }
+        );
+
+        // Store tokens in database
+        await new Promise((resolve, reject) => {
+          const expiresAt = new Date();
+          expiresAt.setMinutes(expiresAt.getMinutes() + 15);
+          
+          db.run(
+            'INSERT INTO AUTH (user_id, access_token, refresh_token, expires_at, auth_provider) VALUES (?, ?, ?, ?, ?)',
+            [user.id, accessToken, refreshToken, expiresAt.toISOString(), 'google'],
+            (err) => {
+              if (err) reject(err);
+              else resolve();
+            }
+          );
+        });
+
+        // Prepare user data for frontend
+        const userData = {
+          id: user.id,
+          email: user.email,
+          username: user.username,
+          status: 'online',
+          accessToken,
+          refreshToken
+        };
+
+        resolve(userData);
       });
     });
-
-    // Then create the new auth record
-    await new Promise((resolve, reject) => {
-      db.run(
-        'INSERT INTO AUTH (user_id, access_token, refresh_token, expires_at) VALUES (?, ?, ?, ?)',
-        [userId, accessToken, refreshToken, expiresAt.toISOString()],
-        (err) => {
-          if (err) {
-            console.error('Error creating auth record:', err);
-            reject(err);
-            return;
-          }
-          resolve();
-        }
-      );
-    });
-
-    // Set cookies for SPA
-    reply.setCookie('access_token', accessToken, { 
-      path: '/', 
-      httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax'
-    });
-    reply.setCookie('refresh_token', refreshToken, { 
-      path: '/', 
-      httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax'
-    });
-
-    // Send the redirect response
-    return reply.redirect(redirectUrl);
   } catch (error) {
-    console.error('Error in issueJwtAndRedirect:', error);
-    return reply.code(500).send({ error: 'Error processing authentication' });
+    reply.code(401).send({ error: 'Invalid token' });
   }
-}
+});
 
 // Start server
 const start = async () => {

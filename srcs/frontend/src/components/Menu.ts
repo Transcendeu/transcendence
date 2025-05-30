@@ -25,10 +25,18 @@ export class Menu {
     private loadUserData(): void {
         console.log('Loading user data...');
         const storedData = localStorage.getItem('user_data');
-        if (storedData) {
+        const accessToken = localStorage.getItem('access_token');
+        const refreshToken = localStorage.getItem('refresh_token');
+
+        if (storedData && accessToken && refreshToken) {
             console.log('Found user data in localStorage:', storedData);
             try {
                 this.userData = JSON.parse(storedData);
+                // Ensure tokens are up to date
+                if (this.userData) {
+                    this.userData.accessToken = accessToken;
+                    this.userData.refreshToken = refreshToken;
+                }
                 console.log('Loaded user data:', this.userData);
             } catch (error) {
                 console.error('Error parsing stored user data:', error);
@@ -50,12 +58,77 @@ export class Menu {
             try {
                 // Decode the base64 string, handling URL-safe base64
                 const base64Data = data.replace(/-/g, '+').replace(/_/g, '/');
-                const decodedData = JSON.parse(atob(base64Data)) as UserData;
+                const decodedData = JSON.parse(atob(base64Data));
                 console.log('Decoded user data:', decodedData);
-                this.userData = decodedData;
-                
-                // Store user data in localStorage
-                localStorage.setItem('user_data', JSON.stringify(decodedData));
+
+                if (decodedData.requiresTwoFactor) {
+                    // Show 2FA input dialog
+                    const twoFactorDialog = document.createElement('div');
+                    twoFactorDialog.className = 'two-factor-dialog';
+                    twoFactorDialog.innerHTML = `
+                        <div class="two-factor-content">
+                            <h3>Two-Factor Authentication Required</h3>
+                            <p>Please enter your 2FA code to complete the login</p>
+                            <div class="form-group">
+                                <input type="text" id="twoFactorToken" pattern="[0-9]{6}" maxlength="6" placeholder="Enter 6-digit code">
+                                <div class="error-message" id="twoFactorError"></div>
+                            </div>
+                            <button id="verify2FA" class="auth-button">Verify</button>
+                        </div>
+                    `;
+
+                    document.body.appendChild(twoFactorDialog);
+
+                    const verifyButton = twoFactorDialog.querySelector('#verify2FA');
+                    const tokenInput = twoFactorDialog.querySelector('#twoFactorToken') as HTMLInputElement;
+                    const errorDisplay = twoFactorDialog.querySelector('#twoFactorError');
+
+                    if (verifyButton && tokenInput && errorDisplay) {
+                        verifyButton.addEventListener('click', async () => {
+                            try {
+                                const response = await fetch('/api/auth/verify-google-2fa', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json'
+                                    },
+                                    body: JSON.stringify({
+                                        tempToken: decodedData.tempToken,
+                                        twoFactorToken: tokenInput.value
+                                    })
+                                });
+
+                                const responseData = await response.json();
+
+                                if (!response.ok) {
+                                    throw new Error(responseData.error || 'Verification failed');
+                                }
+
+                                // Store user data and tokens
+                                localStorage.setItem('user_data', JSON.stringify(responseData));
+                                localStorage.setItem('access_token', responseData.accessToken);
+                                localStorage.setItem('refresh_token', responseData.refreshToken);
+
+                                // Remove dialog and update page
+                                document.body.removeChild(twoFactorDialog);
+                                this.userData = responseData;
+                                this.render();
+                            } catch (error) {
+                                errorDisplay.textContent = error instanceof Error ? error.message : 'Verification failed';
+                            }
+                        });
+
+                        tokenInput.addEventListener('input', (e) => {
+                            const input = e.target as HTMLInputElement;
+                            input.value = input.value.replace(/[^0-9]/g, '');
+                        });
+                    }
+                } else {
+                    // Regular login flow
+                    this.userData = decodedData;
+                    localStorage.setItem('user_data', JSON.stringify(decodedData));
+                    localStorage.setItem('access_token', decodedData.accessToken);
+                    localStorage.setItem('refresh_token', decodedData.refreshToken);
+                }
                 
                 // Remove the data parameter from URL and update the page
                 window.history.replaceState({}, document.title, '/');
@@ -74,14 +147,17 @@ export class Menu {
 
     private isAuthenticated(): boolean {
         const userData = localStorage.getItem('user_data');
-        if (!userData) {
-            console.log('No user data found in localStorage');
+        const accessToken = localStorage.getItem('access_token');
+        const refreshToken = localStorage.getItem('refresh_token');
+
+        if (!userData || !accessToken || !refreshToken) {
+            console.log('Missing authentication data');
             return false;
         }
 
         try {
             const parsedData = JSON.parse(userData) as UserData;
-            const hasTokens = Boolean(parsedData.accessToken && parsedData.refreshToken);
+            const hasTokens = Boolean(accessToken && refreshToken);
             console.log('Checking authentication:', { 
                 hasUserData: true, 
                 hasTokens,
@@ -279,6 +355,8 @@ export class Menu {
                     console.error('Error during logout:', error);
                 } finally {
                     localStorage.removeItem('user_data');
+                    localStorage.removeItem('access_token');
+                    localStorage.removeItem('refresh_token');
                     this.userData = null;
                     this.render();
                 }
