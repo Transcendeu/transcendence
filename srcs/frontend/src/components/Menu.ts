@@ -211,61 +211,10 @@ export class Menu {
                         </div>
                     `}
                 </div>
-                ${isAuth ? `
-                    <div class="game-stats">
-                        <p class="stats-title">YOUR STATS</p>
-                        <div class="stats-content">
-                            <div class="stat-item">
-                                <span class="stat-label">WINS</span>
-                                <span class="stat-value" id="wins">0</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-label">RANK</span>
-                                <span class="stat-value" id="rank">-</span>
-                            </div>
-                        </div>
-                    </div>
-                ` : ''}
             </div>
         `;
 
         this.addEventListeners();
-        if (isAuth) {
-            this.loadUserStats();
-        }
-    }
-
-    private async loadUserStats(): Promise<void> {
-        try {
-            const userData = localStorage.getItem('user_data');
-            if (!userData) {
-                console.error('No user data found');
-                return;
-            }
-
-            const parsedData = JSON.parse(userData) as UserData;
-            console.log('Loading user stats for user:', parsedData);
-            const response = await fetch('/api/user/stats', {
-                headers: {
-                    'Authorization': `Bearer ${parsedData.accessToken}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            if (response.ok) {
-                const stats = await response.json();
-                console.log('Received user stats:', stats);
-                const winsElement = document.getElementById('wins');
-                const rankElement = document.getElementById('rank');
-
-                if (winsElement) winsElement.textContent = stats.wins.toString();
-                if (rankElement) rankElement.textContent = stats.rank || '-';
-            } else {
-                console.error('Failed to load user stats:', response.status);
-            }
-        } catch (error) {
-            console.error('Error loading user stats:', error);
-        }
     }
 
     private addEventListeners(): void {

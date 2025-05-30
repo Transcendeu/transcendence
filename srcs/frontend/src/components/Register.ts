@@ -1,4 +1,5 @@
 import { Router } from '../router/Router';
+import { hashPassword } from '../utils/crypto';
 
 export class Register {
     constructor(private container: HTMLElement, private router: Router) {
@@ -63,12 +64,15 @@ export class Register {
                 }
 
                 try {
+                    // Hash the password before sending
+                    const hashedPassword = await hashPassword(password);
+
                     const response = await fetch('/api/auth/register', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                         },
-                        body: JSON.stringify({ username, email, password }),
+                        body: JSON.stringify({ username, email, password: hashedPassword }),
                     });
 
                     if (!response.ok) {
@@ -81,7 +85,7 @@ export class Register {
                         headers: {
                             'Content-Type': 'application/json',
                         },
-                        body: JSON.stringify({ username, password }),
+                        body: JSON.stringify({ username, password: hashedPassword }),
                     });
 
                     if (!loginResponse.ok) {

@@ -1,4 +1,5 @@
 import { Router } from '../router/Router';
+import { hashPassword } from '../utils/crypto';
 
 export class Login {
     constructor(private container: HTMLElement, private router: Router) {
@@ -54,12 +55,15 @@ export class Login {
                 const token = formData.get('twoFactorToken') as string;
 
                 try {
+                    // Hash the password before sending
+                    const hashedPassword = await hashPassword(password);
+
                     const response = await fetch('/api/auth/login', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                         },
-                        body: JSON.stringify({ username, password, twoFactorToken: token }),
+                        body: JSON.stringify({ username, password: hashedPassword, twoFactorToken: token }),
                     });
 
                     const data = await response.json();

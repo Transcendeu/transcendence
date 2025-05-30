@@ -30,9 +30,11 @@ The project consists of multiple services:
 - [x] JWT-based authentication
 - [x] Google OAuth integration
 
-![WARN] - Faltando session token não salvo no localstorage.
+![FIXED] - Faltando session token não salvo no localstorage.
+
 ![FIXED] - /register retornando 400. 
-![WARN] - Senha não encriptada no frontend.
+
+![FIXED] - Senha não encriptada no frontend.
 
 ### Game Service (api/game) / Remote Player - Nico
 - [ ] Real-time game communication

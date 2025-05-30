@@ -72,6 +72,7 @@ fastify.post('/register', async (request, reply) => {
   }
 
   try {
+    // The password is already hashed from the frontend, so we'll hash it again with bcrypt
     const hashedPassword = await bcrypt.hash(password, 10);
     
     return new Promise((resolve, reject) => {
@@ -254,6 +255,7 @@ fastify.post('/login', async (request, reply) => {
       }
 
       try {
+        // The password is already hashed from the frontend, so we'll compare it with the stored hash
         const validPassword = await bcrypt.compare(password, user.password);
         if (!validPassword) {
           reply.code(401).send({ error: 'Invalid credentials' });
