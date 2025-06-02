@@ -1,9 +1,10 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
-const dbPath = path.join(__dirname, '../../database.sqlite');
+const dbPath = path.join(__dirname, './database.sqlite'); // será inutilizada - se conectar na porta 5000 com o db
 
-const db = new sqlite3.Database(dbPath, (err) => {
+const db = new sqlite3.Database(dbPath, (err) => { // passar esse bloco para que o auth 'index.js' se conecte diretamente com o banco de dados
+												  // todas as partes do back que terão conexão com o banco deverão ter uma nova instância
   if (err) {
     console.error('Error opening database:', err);
     process.exit(1);
@@ -13,7 +14,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
 
 const initDatabase = () => {
   return new Promise((resolve, reject) => {
-    db.serialize(() => {
+    db.serialize(() => { // tabela usuario
       db.run(`CREATE TABLE IF NOT EXISTS USER (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT NOT NULL,
@@ -26,7 +27,7 @@ const initDatabase = () => {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`);
-
+		// tabela auth
       db.run(`CREATE TABLE IF NOT EXISTS AUTH (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
