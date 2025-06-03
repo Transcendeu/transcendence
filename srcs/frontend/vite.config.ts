@@ -1,12 +1,14 @@
 import { defineConfig } from 'vite';
 import path from 'path';
+import tailwindcss from 'tailwindcss';
+import autoprefixer from 'autoprefixer';
 
 export default defineConfig({
-  root: '.',
+  root: 'src',
   base: '/',
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': path.resolve(__dirname, 'src'),
     },
   },
   server: {
@@ -23,5 +25,13 @@ export default defineConfig({
     sourcemap: true,
     target: 'esnext',
     minify: 'terser'
+  },
+  css: {
+    postcss: {
+      plugins: [
+        tailwindcss(),
+        autoprefixer()
+      ]
+    }
   }
-}); 
+});

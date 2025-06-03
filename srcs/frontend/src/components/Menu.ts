@@ -205,7 +205,7 @@ export class Menu {
                             <button class="auth-button" id="login">LOGIN</button>
                             <button class="auth-button" id="register">REGISTER</button>
                             <button class="google-login-button" id="googleLogin">
-                                <img src="/google-icon.svg" alt="Google Icon" class="google-icon">
+                                <img src="./assets/google-icon.svg" alt="Google Icon" class="google-icon">
                                 Login with Google
                             </button>
                         </div>
