@@ -23,7 +23,7 @@ The project consists of multiple services:
 
 ### Frontend - Indy
 
-- [ ] Tailwind CSS
+- [x] Tailwind CSS
 
 ### Authentication (api/auth) - Fer
 - [x] Two-Factor Authentication (2FA)
