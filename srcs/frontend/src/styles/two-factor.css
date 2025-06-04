@@ -1,81 +1,49 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 .two-factor-dialog {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-}
-
-.two-factor-content {
-    background-color: #1a1a1a;
-    padding: 2rem;
-    border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    width: 90%;
-    max-width: 400px;
-    text-align: center;
-}
-
-.two-factor-content h3 {
-    color: #ffffff;
-    margin-bottom: 1rem;
-    font-size: 1.5rem;
-}
-
-.two-factor-content p {
-    color: #cccccc;
-    margin-bottom: 1.5rem;
-}
-
-.two-factor-content .form-group {
-    margin-bottom: 1.5rem;
-}
-
-.two-factor-content input {
-    width: 100%;
-    padding: 0.75rem;
-    border: 1px solid #333;
-    border-radius: 4px;
-    background-color: #2a2a2a;
-    color: #ffffff;
-    font-size: 1.2rem;
-    text-align: center;
-    letter-spacing: 0.5rem;
-}
-
-.two-factor-content input:focus {
-    outline: none;
-    border-color: #4a90e2;
-}
-
-.two-factor-content .error-message {
-    color: #ff4444;
-    margin-top: 0.5rem;
-    font-size: 0.9rem;
-    min-height: 1.2rem;
-}
-
-.two-factor-content .auth-button {
-    width: 100%;
-    padding: 0.75rem;
-    background-color: #4a90e2;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    font-size: 1rem;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-.two-factor-content .auth-button:hover {
-    background-color: #357abd;
-}
-
-.two-factor-content .auth-button:active {
-    background-color: #2a5f94;
-} 
+    @apply fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50;
+  }
+  
+  .two-factor-content {
+    @apply bg-gray-900 p-8 rounded-lg shadow-lg w-11/12 max-w-md text-center;
+  }
+  
+  .two-factor-content h3 {
+    @apply text-white mb-4 text-xl;
+  }
+  
+  .two-factor-content p {
+    @apply text-gray-400 mb-6;
+  }
+  
+  .two-factor-content .form-group {
+    @apply mb-6;
+  }
+  
+  .two-factor-content input {
+    @apply w-full p-3 border border-gray-700 rounded bg-gray-800 text-white text-xl text-center tracking-widest;
+  }
+  
+  .two-factor-content input:focus {
+    @apply outline-none border-blue-500;
+  }
+  
+  .two-factor-content .error-message {
+    @apply text-red-500 mt-2 text-sm min-h-[1.2rem];
+  }
+  
+  .two-factor-content .auth-button {
+    @apply w-full p-3 bg-blue-600 text-white rounded cursor-pointer transition-colors duration-200;
+  }
+  
+  .two-factor-content .auth-button:hover {
+    @apply bg-blue-700;
+  }
+  
+  .two-factor-content .auth-button:active {
+    @apply bg-blue-800;
+  }
+  
