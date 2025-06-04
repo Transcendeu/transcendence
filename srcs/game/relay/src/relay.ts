@@ -57,10 +57,17 @@ function connectToEngine(gameId: string, isLocal: boolean) {
         const obj = JSON.parse(line);
         for (const client of session.clients) {
           if (obj.type === 'state') {
-            obj.playerNames = {
-              player1: session.player1Name ?? '',
-              player2: session.player2Name ?? ''
-            };
+            if (isLocal) {
+              obj.playerNames = {
+                player1: 'Player 1',
+                player2: 'Player 2'
+              };
+            } else {
+              obj.playerNames = {
+                player1: session.player1Name ?? '',
+                player2: session.player2Name ?? ''
+              };
+            }
           }
 
           for (const client of session.clients) {

@@ -135,7 +135,8 @@ body::before {
 }
 
 .game-header {
-  @apply flex justify-center items-center p-4 border-2 border-neonCyan bg-black mb-4 shadow-[0_0_10px_#0ff] w-800px max-w-95p;
+  @apply flex justify-center items-center px-3.5 py-2 border-2 border-neonCyan bg-black shadow-[0_0_10px_#0ff] w-full;
+  margin-bottom: 0.25rem;
 }
 
 .game-header h2 {
@@ -149,7 +150,12 @@ body::before {
 }
 
 .score-board {
-  @apply mt-4 p-4 border-2 border-neonMagenta bg-black flex justify-around text-xs shadow-[0_0_10px_#f0f] w-800px max-w-95p;
+  @apply px-3.5 py-2 border-2 border-neonMagenta bg-black flex justify-around text-xs shadow-[0_0_10px_#f0f] w-full;
+}
+
+.controls {
+  @apply w-full flex border-2 justify-center gap-4 p-4 bg-black border-neonOrange;
+  box-shadow: 0 0 10px #ff9900;
 }
 
 .controls-info {

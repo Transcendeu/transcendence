@@ -132,20 +132,7 @@ export class GameManager {
         };
 
         this.currentRenderer?.drawGameState(data.paddles, data.ball, this.gameState.status);
-/*
-        const scoreP1 = document.getElementById('score-player1');
-        const scoreP2 = document.getElementById('score-player2');
-        if (scoreP1 && scoreP2) {
-          scoreP1.textContent = data.scores.player1.toString();
-          scoreP2.textContent = data.scores.player2.toString();
-        }
-
-        const nameP1 = document.getElementById('name-player1');
-        const nameP2 = document.getElementById('name-player2');
-        if (nameP1 && nameP2 && data.playerNames) {
-          nameP1.textContent = this.gameState.player1 || 'Waiting...';
-          nameP2.textContent = this.gameState.player2 || 'Waiting...';
-        }*/
+        this.updateGame(data);
       }
     };
 
@@ -156,7 +143,7 @@ export class GameManager {
     };
 
     this.activeSocket.onerror = (err) => console.error('WebSocket error', err);
-/*
+
     const matchControl = document.getElementById('matchControl') as HTMLButtonElement;
     const forfeit = document.getElementById('forfeit') as HTMLButtonElement;
     let matchState: 'playing' | 'paused' = 'paused';
@@ -170,18 +157,23 @@ export class GameManager {
 
     forfeit.onclick = () => {
       this.activeSocket?.send(JSON.stringify({ type: 'forfeit' }));
-    };*/
+    };
   }
-/*
-  private updateGameUI(data: any) {
-    // Your existing UI update logic
-    const scoreP1 = document.getElementById('score-player1');
-    const scoreP2 = document.getElementById('score-player2');
-    if (scoreP1 && scoreP2) {
-      scoreP1.textContent = data.scores.player1.toString();
-      scoreP2.textContent = data.scores.player2.toString();
-    }
-  }*/
+
+  private updateGame(data: any) {   
+      const scoreP1 = document.getElementById('score-player1');
+      const scoreP2 = document.getElementById('score-player2');
+      if (scoreP1 && scoreP2) {
+        scoreP1.textContent = data.scores.player1.toString();
+        scoreP2.textContent = data.scores.player2.toString();
+      }
+      const nameP1 = document.getElementById('name-player1');
+      const nameP2 = document.getElementById('name-player2');
+      if (nameP1 && nameP2 && data.playerNames) {
+        nameP1.textContent = data.playerNames.player1 || 'Waiting...';
+        nameP2.textContent = data.playerNames.player2 || 'Waiting...';
+      }    
+  }
 
   private setupInputHandlers(socket: WebSocket, localPlay: boolean) {
   // Track key states and timestamps
@@ -303,42 +295,56 @@ private normalizeKey(key: string, localPlay: boolean) {
   }
 
   private createGameContainer(): HTMLDivElement {
-  const wrapper = document.createElement('div');
-  wrapper.className = 'game-container flex items-center justify-center min-h-screen bg-neutral-950';
+    const wrapper = document.createElement('div');
+    wrapper.className = 'game-container flex flex-col min-h-screen bg-neutral-950 pt-4';
 
-  const inner = document.createElement('div');
-  inner.className = 'flex flex-col items-center justify-center w-[64vw] p-4 bg-black text-white rounded gap-4';
 
-  inner.innerHTML = `
-    <!-- HUD -->
-    <div class="hud flex justify-between items-center w-full px-4 py-2 text-sm sm:text-base">
-      <div class="player-info">
-        <span id="name-player1">Player 1</span>
-        <span id="score-player1">0</span>
+    const inner = document.createElement('div');
+    inner.className = 'flex flex-col items-center gap-4 w-[64vw] p-4 bg-black text-white rounded flex-grow';
+
+  
+    inner.innerHTML = `
+      <!-- HUD -->
+      <div class="flex flex-col items-center gap-8 w-full">
+        <div class="game-header w-full">
+          <h2>PONG</h2>
+        </div>
+
+        <div class="hud flex justify-between items-center w-full text-sm sm:text-base">
+          <div class="player-info score-board w-[48%]">
+            <span id="name-player1">Player 1</span>
+            <span id="score-player1">0</span>
+          </div>
+          <div class="player-info score-board text-right w-[48%]">
+            <span id="score-player2">0</span>
+            <span id="name-player2">Player 2</span>
+          </div>
+        </div>
       </div>
-      <div class="player-info text-right">
-        <span id="score-player2">0</span>
-        <span id="name-player2">Player 2</span>
+
+      <!-- Canvas -->
+      <div class="canvas-wrapper gameCanvas relative aspect-video w-full max-h-[65vh] rounded-lg overflow-hidden">
+        <canvas id="game-canvas" class="absolute top-0 left-0 w-full h-full"></canvas>
       </div>
-    </div>
 
-    <!-- Canvas -->
-    <div class="canvas-wrapper relative aspect-video w-full max-h-[80vh] bg-gray-900 border border-white rounded-lg overflow-hidden">
+      <!-- Footer controls -->
+      <footer class="controls w-full flex justify-between items-center px-2 py-1">
+        <div class="w-[48%] flex justify-center">
+          <button id="matchControl" class="bg-black text-white text-sm px-2 py-1 shadow-[0_0_0px_#0051ff] hover:shadow-[0_0_10px_#0051ff] transition rounded-none">
+            Start
+          </button>
+        </div>
+        <div class="w-[48%] flex justify-center">
+          <button id="forfeit" class="bg-black text-white text-sm px-2 py-1 shadow-[0_0_0px_#ff1500] hover:shadow-[0_0_10px_#ff1500] transition rounded-none">
+            Forfeit
+          </button>
+        </div>
+      </footer>
+    `;
 
-      <canvas id="game-canvas" class="absolute top-0 left-0 w-full h-full"></canvas>
-    </div>
-
-    <!-- Controls -->
-    <div class="controls flex gap-4">
-      <button id="matchControl" class="bg-blue-500 text-white px-4 py-2 rounded">Start</button>
-      <button id="forfeit" class="bg-red-500 text-white px-4 py-2 rounded">Forfeit</button>
-    </div>
-  `;
-
-  wrapper.appendChild(inner);
-  return wrapper;
-}
-
+    wrapper.appendChild(inner);
+    return wrapper;
+  }
 
 }
 

@@ -64,7 +64,7 @@ export class CanvasRenderer implements GameRenderer {
       const message =
         gameStatus === 'waiting' ? 'Press SPACE to resume' : 'Waiting for other players';
 
-      this.ctx.font = `${Math.floor(this.canvas.height * 0.08)}px ${GameColors.text.font}`;
+      this.ctx.font = `${Math.floor(this.canvas.height * 0.07)}px ${GameColors.text.font}`;
       this.ctx.fillStyle =
         gameStatus === 'waiting'
           ? GameColors.text.primary
@@ -73,7 +73,7 @@ export class CanvasRenderer implements GameRenderer {
       this.ctx.textAlign = 'center';
       this.ctx.textBaseline = 'middle';
 
-      this.ctx.fillText(message, this.canvas.width / 2, this.canvas.height * 0.9);
+      this.ctx.fillText(message, this.canvas.width / 2, this.canvas.height * 0.91);
     }
   }
 
