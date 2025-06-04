@@ -1,13 +1,8 @@
-version: '3.8'
-
 services:
   auth:
     build:
       context: ./srcs/auth
       dockerfile: Dockerfile
-    volumes:
-      - ./srcs/auth:/app
-      - /app/node_modules
     environment:
       - NODE_ENV=development
       - PORT=3000
@@ -46,6 +41,26 @@ services:
       - frontend
     networks:
       - transcendence_network
+
+  engine:
+    build:
+      context: ./srcs/game/engine
+      dockerfile: Dockerfile
+    container_name: pong_engine
+    depends_on:
+      - frontend
+    networks:
+      - transcendence_network
+
+  relay:
+    build:
+      context: ./srcs/game/relay
+      dockerfile: Dockerfile
+    container_name: pong_relay
+    depends_on:
+      - engine
+    networks:
+    - transcendence_network
 
 networks:
   transcendence_network:

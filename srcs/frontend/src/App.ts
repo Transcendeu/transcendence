@@ -1,11 +1,12 @@
 import { Router } from './router/Router';
 import { Menu } from './components/Menu';
-import { PongGame } from './components/PongGame';
 import { NotFound } from './components/NotFound';
+import { GameManager } from './components/game-component/game-manager';
 import { Login } from './components/Login';
 import { Register } from './components/Register';
 import { Settings } from './components/Settings';
 import { LocalTournament } from './components/LocalTournament';
+
 
 export class App {
     private container: HTMLElement;
@@ -88,11 +89,15 @@ export class App {
     }
 
     private async startLocalGame(): Promise<void> {
-        return new Promise((resolve) => {
-            new PongGame(this.container, () => {
+        return new Promise(async (resolve) => {
+            const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
+            const name = userData.username || undefined;
+            const manager = new GameManager(this.container, () => {
                 this.router.navigate('/');
                 resolve();
             });
+
+            await manager.init(name, true);
         });
     }
 
