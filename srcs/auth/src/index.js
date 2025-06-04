@@ -3,23 +3,22 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const speakeasy = require('speakeasy');
 const QRCode = require('qrcode');
-const { db, initDatabase } = require('./database/init');
 const { OAuth2Client } = require('google-auth-library');
 const fastifyCookie = require('fastify-cookie');
 const fs = require('fs');
+const axios = require('axios');
+const DB_URL = process.env.DATABASE_URL || 'http://database:5000';
 
-// Initialize database
-initDatabase().catch(console.error);
 
 // CORS configuration
-fastify.register(require('@fastify/cors'), {
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
-});
+// fastify.register(require('@fastify/cors'), {
+//   origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+//   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+//   allowedHeaders: ['Content-Type', 'Authorization'],
+//   credentials: true
+// });
 
-fastify.register(fastifyCookie);
+// fastify.register(fastifyCookie);
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;

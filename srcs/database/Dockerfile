@@ -1,21 +1,19 @@
 FROM node:18-alpine
 
-# Cria e define o diretório de trabalho dentro do container
 WORKDIR /usr/src/app
 
-# Copia o package.json e instala dependências
 COPY package.json ./
 
-# Se houver package-lock.json, copie também:
-# COPY package-lock.json ./
 RUN npm install
+RUN apk add --no-cache sqlite
 
-# (Opcional) Se você quiser iniciar com um arquivo SQLite vazio,
-# basta não copiar nenhum banco e a aplicação criará automaticamente.
-# Caso queira providenciar um banco inicial, mantenha o arquivo em src/.
+COPY . .
 
-# Exponha a porta que o Fastify vai usar (3000 por padrão)
-EXPOSE 5173
+RUN mkdir -p /usr/src/app/database \
+    && chown -R node:node /usr/src/app/database
 
-# Comando padrão para iniciar a aplicação
+EXPOSE 5000
+
+USER node
+
 CMD ["npm", "start"]
