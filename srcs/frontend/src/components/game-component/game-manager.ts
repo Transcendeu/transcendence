@@ -144,10 +144,51 @@ export class GameManager {
 
     this.activeSocket.onerror = (err) => console.error('WebSocket error', err);
 
-    const matchControl = document.getElementById('matchControl') as HTMLButtonElement;
-    const forfeit = document.getElementById('forfeit') as HTMLButtonElement;
-    
+    const forfeitButton = document.getElementById('forfeit') as HTMLButtonElement;
+      let forfeitTimeout: number | null = null;
+      let isConfirming = false;
+      let cooldown = false;
 
+      const resetForfeitButton = () => {
+        isConfirming = false;
+        forfeitButton.textContent = 'Concede';
+        forfeitButton.classList.remove('conceding');
+        if (forfeitTimeout) {
+          clearTimeout(forfeitTimeout);
+          forfeitTimeout = null;
+        }
+      };
+
+      const startCooldown = () => {
+        cooldown = true;
+        forfeitButton.disabled = true;
+        setTimeout(() => {
+          cooldown = false;
+          forfeitButton.disabled = false;
+        }, 1000);
+      };
+
+      forfeitButton.addEventListener('click', () => {
+        if (cooldown) return;
+        startCooldown();
+
+        if (isConfirming) {
+          // Second click - confirm forfeit
+          this.activeSocket?.send(JSON.stringify({ type: 'forfeit', name: playerName, role }));
+          resetForfeitButton();
+        } else {
+          // First click - start confirmation
+          isConfirming = true;
+          forfeitButton.textContent = 'Forfeit the match?';
+          forfeitButton.classList.add('conceding');
+          
+          // 5-second confirmation window
+          forfeitTimeout = window.setTimeout(resetForfeitButton, 5000);
+        }
+      });
+
+    
+    const matchControl = document.getElementById('matchControl') as HTMLButtonElement;
     matchControl.onclick = () => {
         if (!this.gameState) return;
         
@@ -166,11 +207,7 @@ export class GameManager {
                 return;
         }
         
-        this.activeSocket?.send(JSON.stringify({ type }));
-    };
-
-    forfeit.onclick = () => {
-      this.activeSocket?.send(JSON.stringify({ type: 'forfeit' }));
+        this.activeSocket?.send(JSON.stringify({ type: type, name: playerName, role }));
     };
   }
 
@@ -378,7 +415,7 @@ private normalizeKey(key: string, localPlay: boolean) {
           <button id="matchControl" class="btn-control btn-start">Start</button>
         </div>
         <div class="w-[48%] flex justify-center">
-          <button id="forfeit" class="btn-control btn-forfeit">Forfeit</button>
+          <button id="forfeit" class="btn-control btn-forfeit">Concede</button>
         </div>
       </footer>
     `;
@@ -386,6 +423,5 @@ private normalizeKey(key: string, localPlay: boolean) {
     wrapper.appendChild(inner);
     return wrapper;
   }
-
+  
 }
-

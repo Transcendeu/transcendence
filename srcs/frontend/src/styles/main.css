@@ -177,6 +177,9 @@ body::before {
   @apply shadow-[0_0_0px_#f00] hover:shadow-[0_0_10px_#f00];
 }
 
+button#forfeit.conceding {
+  @apply bg-red-700 font-bold shadow-[0_0_0_4px_white,0_0_10px_8px_red];
+}
 
 .duck {
   width: 32px;

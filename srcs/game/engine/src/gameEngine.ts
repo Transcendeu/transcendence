@@ -184,11 +184,11 @@ function getInitialGameState(scoreP1: number, scoreP2: number): GameState {
       y: 0.5,
       vx: 0.00025,
       vy: 0.0002,
-      radius: 0.015
+      radius: 0.007
     },
     paddles: {
-      player1: { x: 0.05, y: 0.4, width: 0.02, height: 0.2 },
-      player2: { x: 0.93, y: 0.4, width: 0.02, height: 0.2 },
+      player1: { x: 0.05, y: 0.4, width: 0.01, height: 0.2 },
+      player2: { x: 0.93, y: 0.4, width: 0.01, height: 0.2 },
     },
     scores: { player1: scoreP1, player2: scoreP2 },
     gameStatus: 'waiting',
