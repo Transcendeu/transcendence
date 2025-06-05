@@ -155,7 +155,7 @@ body::before {
 
 .controls {
   @apply w-full flex border-2 justify-center gap-4 p-4 bg-black border-neonOrange;
-  box-shadow: 0 0 10px #ff9900;
+  box-shadow: 0 0 4px #ff9900;
 }
 
 .controls-info {
@@ -164,6 +164,19 @@ body::before {
   width: 800px;
   max-width: 95%;
 }
+
+.btn-control {
+  @apply bg-black text-white text-sm px-2 py-1 transition rounded-none;
+}
+
+.btn-start {
+  @apply shadow-[0_0_0px_#fff] hover:shadow-[0_0_10px_#fff];
+}
+
+.btn-forfeit {
+  @apply shadow-[0_0_0px_#f00] hover:shadow-[0_0_10px_#f00];
+}
+
 
 .duck {
   width: 32px;

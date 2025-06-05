@@ -18,6 +18,8 @@ export class CanvasRenderer implements GameRenderer {
     this.canvas.style.left = '0';
     this.canvas.style.width = '100%';
     this.canvas.style.height = '100%';
+    this.canvas.style.border = GameColors.canvasBorder;
+    this.canvas.style.boxShadow = GameColors.canvasShadow;
 
     const wrapper = this.container.querySelector('.canvas-wrapper');
     if (wrapper) wrapper.appendChild(this.canvas);
@@ -34,16 +36,31 @@ export class CanvasRenderer implements GameRenderer {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     this.setBackground();
 
+  this.ctx.strokeStyle = GameColors.centerLine;
+  this.ctx.setLineDash([48, 10]);
+  this.ctx.beginPath();
+  this.ctx.moveTo(this.canvas.width / 2, 0);
+  this.ctx.lineTo(this.canvas.width / 2, this.canvas.height);
+  this.ctx.stroke();
+  this.ctx.setLineDash([]);
+
+
+  this.ctx.shadowColor = GameColors.glow;
+  this.ctx.shadowBlur = 10;
+
     // Draw paddles
-    this.ctx.fillStyle = GameColors.paddle;
-    for (const paddle of Object.values(paddles)) {
-      this.ctx.fillRect(
-        paddle.x * this.canvas.width,
-        paddle.y * this.canvas.height,
-        paddle.width * this.canvas.width,
-        paddle.height * this.canvas.height
+    const paddleEntries = Object.entries(paddles);
+    paddleEntries.forEach(([_, paddle], index) => {
+      const colorIndex = index % GameColors.paddleColors.length;
+      this.ctx!.fillStyle = GameColors.paddleColors[colorIndex];
+      this.ctx!.fillRect(
+        paddle.x * this.canvas!.width,
+        paddle.y * this.canvas!.height,
+        paddle.width * this.canvas!.width,
+        paddle.height * this.canvas!.height
       );
-    }
+    });
+
 
     // Draw ball
     if (gameStatus !== 'queued') {
@@ -59,6 +76,7 @@ export class CanvasRenderer implements GameRenderer {
       this.ctx.fill();
     }
 
+    this.ctx.shadowBlur = 3;
     // Game status messages
     if (gameStatus === 'waiting' || gameStatus === 'queued') {
       const message =
@@ -75,6 +93,7 @@ export class CanvasRenderer implements GameRenderer {
 
       this.ctx.fillText(message, this.canvas.width / 2, this.canvas.height * 0.91);
     }
+    this.ctx.shadowBlur = 0;
   }
 
   setBackground() {

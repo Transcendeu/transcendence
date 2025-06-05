@@ -305,7 +305,7 @@ private normalizeKey(key: string, localPlay: boolean) {
   
     inner.innerHTML = `
       <!-- HUD -->
-      <div class="flex flex-col items-center gap-8 w-full">
+      <div class="flex flex-col items-center gap-2 w-full">
         <div class="game-header w-full">
           <h2>PONG</h2>
         </div>
@@ -323,21 +323,17 @@ private normalizeKey(key: string, localPlay: boolean) {
       </div>
 
       <!-- Canvas -->
-      <div class="canvas-wrapper gameCanvas relative aspect-video w-full max-h-[65vh] rounded-lg overflow-hidden">
-        <canvas id="game-canvas" class="absolute top-0 left-0 w-full h-full"></canvas>
+      <div class="canvas-wrapper relative aspect-video w-full max-h-[65vh] p-4">
+        <canvas id="game-canvas" class="absolute top-0 left-0 w-full h-full gameCanvas"></canvas>
       </div>
 
       <!-- Footer controls -->
       <footer class="controls w-full flex justify-between items-center px-2 py-1">
         <div class="w-[48%] flex justify-center">
-          <button id="matchControl" class="bg-black text-white text-sm px-2 py-1 shadow-[0_0_0px_#0051ff] hover:shadow-[0_0_10px_#0051ff] transition rounded-none">
-            Start
-          </button>
+          <button id="matchControl" class="btn-control btn-start">Start</button>
         </div>
         <div class="w-[48%] flex justify-center">
-          <button id="forfeit" class="bg-black text-white text-sm px-2 py-1 shadow-[0_0_0px_#ff1500] hover:shadow-[0_0_10px_#ff1500] transition rounded-none">
-            Forfeit
-          </button>
+          <button id="forfeit" class="btn-control btn-forfeit">Forfeit</button>
         </div>
       </footer>
     `;

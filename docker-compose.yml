@@ -21,8 +21,10 @@ services:
       - "80:80"
     depends_on:
       - auth
+      - relay
     networks:
       - transcendence_network
+#    restart: on-failure
 
   frontend:
     build:
