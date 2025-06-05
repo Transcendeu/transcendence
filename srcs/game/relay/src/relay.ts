@@ -197,7 +197,7 @@ fastify.get<{Params: { gameId: string }}>('/ws/:gameId', { websocket: true }, (s
       if (client.role === 'player2') session.player2Name = client.name;
 
       if (bothPlayersConnected(session)) {
-        console.log(`Both players connected for session ${session.id}. Sending 'players_ready' to engine.`);
+//        console.log(`Both players connected for session ${session.id}. Sending 'players_ready' to engine.`);
         session.engineSocket.write(JSON.stringify({ type: 'ready' }) + '\n');
       }
     }
@@ -205,7 +205,7 @@ fastify.get<{Params: { gameId: string }}>('/ws/:gameId', { websocket: true }, (s
 
 
   if (client.role === 'player1' || client.role === 'player2') {
-      console.log(`[Relay] Forwarding to engine:(${data.type})`, msg.toString());
+      if (data.type !== 'input') console.log(`[Relay] Forwarding to engine:(${data.type})`, msg.toString());//logging to implement
       if (['input', 'ready', 'pause', 'resume', 'forfeit', 'space'].includes(data.type)) {
         const inputPayload = {
           player: client.name,

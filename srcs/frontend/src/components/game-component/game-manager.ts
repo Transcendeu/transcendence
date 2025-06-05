@@ -146,13 +146,27 @@ export class GameManager {
 
     const matchControl = document.getElementById('matchControl') as HTMLButtonElement;
     const forfeit = document.getElementById('forfeit') as HTMLButtonElement;
-    let matchState: 'playing' | 'paused' = 'paused';
+    
 
     matchControl.onclick = () => {
-      const type = matchState === 'paused' ? 'resume' : 'pause';
-      this.activeSocket?.send(JSON.stringify({ type }));
-      matchControl.textContent = matchState === 'paused' ? 'Pause' : 'Resume';
-      matchState = type === 'resume' ? 'playing' : 'paused';
+        if (!this.gameState) return;
+        
+        let type: string;
+        switch (this.gameState.status) {
+            case 'waiting':
+                type = 'ready';
+                break;
+            case 'playing':
+                type = 'pause';
+                break;
+            case 'paused':
+                type = 'resume';
+                break;
+            default:
+                return;
+        }
+        
+        this.activeSocket?.send(JSON.stringify({ type }));
     };
 
     forfeit.onclick = () => {
@@ -172,7 +186,38 @@ export class GameManager {
       if (nameP1 && nameP2 && data.playerNames) {
         nameP1.textContent = data.playerNames.player1 || 'Waiting...';
         nameP2.textContent = data.playerNames.player2 || 'Waiting...';
-      }    
+      }
+
+      const matchControl = document.getElementById('matchControl') as HTMLButtonElement;
+      if (matchControl && data.gameStatus) {
+          switch (data.gameStatus) {
+              case 'waiting':
+                  matchControl.textContent = 'Start';
+                  matchControl.disabled = false;
+                  break;
+              case 'playing':
+                  matchControl.textContent = 'Pause';
+                  matchControl.disabled = false;
+                  break;
+              case 'paused':
+                  matchControl.textContent = 'Resume';
+                  matchControl.disabled = false;
+                  break;
+              case 'queued':
+                  matchControl.textContent = 'Waiting';
+                  
+                  matchControl.disabled = true;
+                  break;
+              default:
+                  matchControl.disabled = true;
+          }
+            // Toggle glow effect only when enabled
+            if (matchControl.disabled) {
+                matchControl.classList.remove('btn-start');
+            } else {
+                matchControl.classList.add('btn-start');
+            }
+      }
   }
 
   private setupInputHandlers(socket: WebSocket, localPlay: boolean) {

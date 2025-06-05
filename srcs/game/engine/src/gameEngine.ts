@@ -43,6 +43,14 @@ interface GameState {
   gameStatus?: 'waiting' | 'playing' | 'paused' | 'queued';
 }
 
+interface GameEvent {
+  player?: string;
+  input: string;
+  state: string;
+  role?: string;
+  type: string;
+}
+
 const games = new Map<string, {
   state: GameState;
   inputs: InputStates;
@@ -101,15 +109,16 @@ function handleGameConnection(gameId: string, socket: Socket) {
     if (!game) return;
 //console.log('received line', line);
     try {
-      const { player, input, state, role, type } = JSON.parse(line);
-      switch (type) {
+      const event: GameEvent = JSON.parse(line);
+      //const { player, input, state, role, type } = JSON.parse(line);
+      switch (event.type) {
           case 'input': {
-            console.log(`Received input: player=${player}, input=${input}, role= ${role} state=${state} (${typeof state})`);
-              if (role === 'player1' || role === 'player2') {
-                if (input === 'space') {
+            console.log(`Received input: player=${event.player}, input=${event.input}, role= ${event.role} state=${event.state} (${typeof event.state})`);
+              if (event.role === 'player1' || event.role === 'player2') {
+                if (event.input === 'space') {
                   game.state.gameStatus = 'playing';
-                } else if (game.state.gameStatus === 'playing') {
-                  updateInputState(game.inputs, role, input, state);
+                } else if (game.state.gameStatus === 'playing' && isValidInput(event.input) && isValidState(event.state)) {
+                  updateInputState(game.inputs, event.role, event.input, event.state);
                 }
               }
 //              console.log(`[${gameId}] ${role} ${player} -> ${input} (${state})`);
@@ -117,23 +126,20 @@ function handleGameConnection(gameId: string, socket: Socket) {
             break;
           case 'ready':
             game.state.gameStatus = 'waiting';
-            console.log(`[${gameId}] ${role} ${player} -> pressed ready)`);
+            console.log(`[${gameId}] ${event.role} ${event.player} -> pressed ready)`);
             break;
           case 'pause':
-            if (role && player)
-              game.state.gameStatus = 'paused';
-            else
-              game.state.gameStatus = 'queued';
-            console.log(`[${gameId}] ${role} ${player} -> pressed pause)`);
+            pausePressed(event, game.state, gameId);
+            console.log("there are currently ", game.clients.size, `clients on ${gameId}`);
             break;
           case 'resume':
-            console.log(`[${gameId}] ${role} ${player} -> pressed resume)`);
+            console.log(`[${gameId}] ${event.role} ${event.player} -> pressed resume)`);
             break;
           case 'forfeit':
-            console.log(`[${gameId}] ${role} ${player} -> pressed forfeit)`);
+            console.log(`[${gameId}] ${event.role} ${event.player} -> pressed forfeit)`);
             break;
           default:
-            console.warn(`[${gameId}] ${role} ${player} -> sent invalid type ${type})`);
+            console.warn(`[${gameId}] ${event.role} ${event.player} -> sent invalid type ${event.type})`);
             break;
         }
       } catch (err) {
@@ -371,4 +377,20 @@ function updateInputState(
     inputs[player].down = state === 'press';
   }
   inputs[player].lastUpdate = Date.now();
+}
+
+function isValidInput(input: string): input is 'up' | 'down' {
+  return input === 'up' || input === 'down';
+}
+
+function isValidState(state: string): state is 'press' | 'release' {
+  return state === 'press' || state === 'release';
+}
+
+function pausePressed(event: GameEvent, state: GameState, gameId: string) {
+      if (event.role && event.player)
+        state.gameStatus = 'paused';
+      else
+        state.gameStatus = 'queued';
+      console.log(`[${gameId}] ${event.role} ${event.player} -> pressed pause)`);
 }
