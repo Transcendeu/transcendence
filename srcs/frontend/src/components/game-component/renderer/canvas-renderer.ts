@@ -5,6 +5,10 @@ export class CanvasRenderer implements GameRenderer {
   private ctx: CanvasRenderingContext2D | null = null;
   private canvas: HTMLCanvasElement | null = null;
   private resizeObserver: ResizeObserver | null = null;
+  
+  private pulsePhase = 0; // Track animation phase
+  private lastFrameTime = 0; // For delta time calculation
+  private pulseSpeed = 0.001; // Adjust speed here
 
   constructor(private container: HTMLElement) {}
 
@@ -33,20 +37,34 @@ export class CanvasRenderer implements GameRenderer {
   drawGameState(paddles: PaddleState, ball: BallState, gameStatus: string) {
     if (!this.ctx || !this.canvas) return;
 
+    const now = performance.now();
+    const deltaTime = this.lastFrameTime ? now - this.lastFrameTime : 16; // Default to 60fps
+    this.lastFrameTime = now;
+    // Update pulse phase (wrapped between 0 and 2π)
+    this.pulsePhase = (this.pulsePhase + this.pulseSpeed * deltaTime) % (Math.PI * 2);
+
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     this.setBackground();
 
-  this.ctx.strokeStyle = GameColors.centerLine;
-  this.ctx.setLineDash([48, 10]);
-  this.ctx.beginPath();
-  this.ctx.moveTo(this.canvas.width / 2, 0);
-  this.ctx.lineTo(this.canvas.width / 2, this.canvas.height);
-  this.ctx.stroke();
-  this.ctx.setLineDash([]);
+    // Calculate pulsing dash pattern
+    const pulseIntensity = (Math.sin(this.pulsePhase) + 1) / 2; // 0-1 range
+    const minGlow = 5;
+    const maxGlow = 25;
+    const glowSpan = minGlow + pulseIntensity * (maxGlow - minGlow);
+/*
+    const hue = 180 + pulseIntensity * 60; // Between cyan (180) and magenta (240)
+    this.ctx.strokeStyle = `hsl(${hue}, 100%, 50%)`;
+*/  this.ctx.strokeStyle = GameColors.centerLine;
+    this.ctx.setLineDash([5, 15]);
+    this.ctx.beginPath();
+    this.ctx.moveTo(this.canvas.width / 2, 0);
+    this.ctx.lineTo(this.canvas.width / 2, this.canvas.height);
+    this.ctx.stroke();
+    this.ctx.setLineDash([]);
 
 
-  this.ctx.shadowColor = GameColors.glow;
-  this.ctx.shadowBlur = 10;
+    this.ctx.shadowColor = GameColors.glow;
+    this.ctx.shadowBlur = glowSpan;
 
     // Draw paddles
     const paddleEntries = Object.entries(paddles);
