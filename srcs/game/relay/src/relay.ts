@@ -55,6 +55,27 @@ function connectToEngine(gameId: string, isLocal: boolean) {
       session.buffer = session.buffer.slice(index + 1);
       try {
         const obj = JSON.parse(line);
+
+        if (obj.type === 'game_end') {
+          // Notify all clients and close connections
+          for (const client of session.clients) {
+            if (isConnectedClient(client)) {
+              client.socket.send(JSON.stringify(obj));
+              setTimeout(() => {
+                client.socket.close(1000, 'Game ended'); // Normal closure
+              }, 100);
+            }
+          }
+          // Clean up session after short delay
+          setTimeout(() => {
+            session.engineSocket.end();
+            sessions.delete(session.id);
+            nameToSession.delete(session.player1Name!);
+            nameToSession.delete(session.player2Name!);
+          }, 500);
+          continue; // Skip normal processing
+        }
+
         for (const client of session.clients) {
           if (obj.type === 'state') {
             if (isLocal) {
@@ -226,6 +247,9 @@ fastify.get<{Params: { gameId: string }}>('/ws/:gameId', { websocket: true }, (s
     client.socket = undefined;
     client.ready = false;
 
+    const session = sessions.get(gameId);
+    if (!session || session.engineSocket.destroyed) return;
+
     if (!bothPlayersConnected(session)) {
       console.log(`One or both players disconnected from session ${session.id}. Sending 'pause' to engine.`);
       session.engineSocket.write(JSON.stringify({ type: 'pause' }) + '\n');
@@ -239,13 +263,14 @@ fastify.get<{Params: { gameId: string }}>('/ws/:gameId', { websocket: true }, (s
     // If no active sockets are left in the session, start a cleanup timer
     if (![...session.clients].some(isConnectedClient)) {
       setTimeout(() => {
-        const stillEmpty = [...session.clients].every(c => !c.socket?.readyState);
-        if (stillEmpty) {
+        if ([...session.clients].every(c => !c.socket?.readyState)) {
           console.log(`Cleaning up empty session ${session.id}`);
           session.engineSocket.end();
           sessions.delete(session.id);
+          nameToSession.delete(session.player1Name!);
+          nameToSession.delete(session.player2Name!);
         }
-      }, 30000); // 30 sec grace period
+      }, 30000);
     }
   });
 

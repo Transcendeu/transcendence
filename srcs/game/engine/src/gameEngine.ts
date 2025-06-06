@@ -40,7 +40,9 @@ interface GameState {
     player1: number;
     player2: number;
   };
-  gameStatus?: 'waiting' | 'playing' | 'paused' | 'queued';
+  gameStatus?: 'waiting' | 'playing' | 'paused' | 'queued' | 'forfeited' | 'finished';
+  maxScore: number;
+  winner?: 'player1' | 'player2';
 }
 
 interface GameEvent {
@@ -78,13 +80,17 @@ function handleGameConnection(gameId: string, socket: Socket) {
     const sixtyFps = 1000/60;
 
     game.interval = setInterval(() => {
+      if (game?.state.gameStatus === 'finished' || game?.state.gameStatus === 'forfeited') {
+        finishGame(game);
+        return;
+      }
       const now = Date.now();
       const deltaTime = now - lastTime;
       lastTime = now;
 
       // Update paddles with current inputs
-    updatePaddles(game!.state, game!.inputs, deltaTime);
-    updateBall(game!.state, deltaTime);
+      updatePaddles(game!.state, game!.inputs, deltaTime);
+      updateBall(game!.state, deltaTime);
 
       const payload = {
         type: 'state',
@@ -113,7 +119,7 @@ function handleGameConnection(gameId: string, socket: Socket) {
       //const { player, input, state, role, type } = JSON.parse(line);
       switch (event.type) {
           case 'input': {
-            console.log(`Received input: player=${event.player}, input=${event.input}, role= ${event.role} state=${event.state} (${typeof event.state})`);
+//            console.log(`Received input: player=${event.player}, input=${event.input}, role= ${event.role} state=${event.state} (${typeof event.state})`);
               if (event.role === 'player1' || event.role === 'player2') {
                 if (event.input === 'space') {
                   game.state.gameStatus = 'playing';
@@ -135,7 +141,7 @@ function handleGameConnection(gameId: string, socket: Socket) {
             resumePressed(event, game.state, gameId);
             break;
           case 'forfeit':
-            console.log(`[${gameId}] ${event.role} ${event.player} -> pressed forfeit)`);
+            playerConceded(event, game.state,gameId);
             break;
           default:
             console.warn(`[${gameId}] ${event.role} ${event.player} -> sent invalid type ${event.type})`);
@@ -176,7 +182,10 @@ server.listen(1337, () => {
   console.log('Engine listening on port 1337');
 });
 
-function getInitialGameState(scoreP1: number, scoreP2: number): GameState {
+function getInitialGameState(scoreP1: number, scoreP2: number, maxScore?: number): GameState {
+  if (!maxScore) {
+    maxScore = 11;
+  }
   return {
     ball: {
       x: 0.5,
@@ -191,6 +200,8 @@ function getInitialGameState(scoreP1: number, scoreP2: number): GameState {
     },
     scores: { player1: scoreP1, player2: scoreP2 },
     gameStatus: 'waiting',
+    maxScore: maxScore % 2 === 0 ? maxScore + 1 : maxScore, // Ensure odd number
+    winner: undefined
   };
 }
 
@@ -304,11 +315,33 @@ function checkOutOfBoundsAndScore(state: GameState) {
     state.scores.player2 += 1;
     resetBall(state, -1); // ball moves towards scoring player
     state.gameStatus = 'waiting'; // pause until next spacebar press
+    checkGameEnd(state, 'player2');
   } else if (ball.x > 1) {
     // Player 1 scores
     state.scores.player1 += 1;
     resetBall(state, 1);
     state.gameStatus = 'waiting';
+    checkGameEnd(state, 'player1');
+  }
+}
+
+function checkGameEnd(state: GameState, scoringPlayer: 'player1' | 'player2') {
+  const otherPlayer = scoringPlayer === 'player1' ? 'player2' : 'player1';
+  console.log("checking if ", scoringPlayer, " has score higher than ", state.maxScore);
+  // Check if scoring player has won
+  if (state.scores[scoringPlayer] >= state.maxScore) {
+    state.gameStatus = 'finished';
+    state.winner = scoringPlayer;
+    return;
+  }
+  
+  // Check if other player can't possibly catch up
+  const pointsNeeded = state.maxScore - state.scores[otherPlayer];
+  const pointsAhead = state.scores[scoringPlayer] - state.scores[otherPlayer];
+  
+  if (pointsAhead >= pointsNeeded) {
+    state.gameStatus = 'finished';
+    state.winner = scoringPlayer;
   }
 }
 
@@ -425,4 +458,39 @@ function resumePressed(event: GameEvent, state: GameState, gameId: string) {
     }
   }
   console.log(`[${gameId}] ${event.role} ${event.player} -> pressed resume)`);
+}
+
+function playerConceded(event: GameEvent, state: GameState, gameId: string) {
+    if (event.role === 'player1' || event.role === 'player2') {
+    const winner = event.role === 'player1' ? 'player2' : 'player1';
+    state.gameStatus = 'forfeited';
+    state.winner = winner;
+    console.log(`[${gameId}] ${event.role} ${event.player} -> pressed forfeit)`);
+  } else {
+    console.warn(`Invalid forfeit command received on engine by ${event.player} with role ${event.role}`);
+  }
+}
+
+function finishGame(game: { 
+  state: GameState; 
+  clients: Set<Socket>;
+  interval?: NodeJS.Timeout; }) {
+  // Send final game state
+  const payload = {
+    type: 'game_end',
+    winner: game.state.winner,
+    scores: game.state.scores,
+    gameStatus: game.state.gameStatus // 'finished' or 'forfeited'
+  };
+
+  const json = JSON.stringify(payload) + '\n';
+  for (const client of game.clients) {
+    client.write(json);
+  }
+
+  // Clear interval but keep socket connections open
+  clearInterval(game.interval!);
+  
+  // Don't close the TCP sockets here - let the relay handle that
+  console.log(`Game ${game.state.winner} won with score ${game.state.scores.player1}-${game.state.scores.player2}`);
 }

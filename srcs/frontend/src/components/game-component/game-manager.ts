@@ -16,13 +16,13 @@ export class GameManager {
   } | null = null;
 
   private wrapper: HTMLDivElement;
-
+  private gameEndScreen: HTMLDivElement | null = null;
+  
   constructor(
       private rootContainer: HTMLElement,
       private onGameEnd?: () => void) { //TODO: check/implement this
       this.wrapper = this.createGameContainer();
-      this.rootContainer.replaceChildren(this.wrapper); // Or appendChild for stacking
-//      this.rootContainer.appendChild(this.wrapper);
+      this.rootContainer.replaceChildren(this.wrapper);
     }
 
   async init(name: string, isLocal: boolean) {
@@ -90,6 +90,10 @@ export class GameManager {
     if (this.wrapper && this.wrapper.parentNode) {
       this.wrapper.parentNode.removeChild(this.wrapper);
     }
+    if (this.gameEndScreen) {
+      this.gameEndScreen.remove();
+      this.gameEndScreen = null;
+    }
   }
 
   async setupGame(
@@ -107,6 +111,7 @@ export class GameManager {
     }
 
     this.gameState = null;
+    let normalGameEnd = false;
 
     if (this.activeSocket) {
       this.activeSocket.close();
@@ -135,13 +140,18 @@ export class GameManager {
 
         this.currentRenderer?.drawGameState(data.paddles, data.ball, this.gameState.status);
         this.updateGame(data);
+      } else if (data.type === 'game_end') {
+        normalGameEnd = true;
+        this.showGameEndScreen(data.winner, data.scores, data.gameStatus === 'forfeited');
       }
     };
 
     this.activeSocket.onclose = () => {
       console.log('WebSocket closed');
-      this.cleanup(); // teardown visuals + socket
-      this.onGameEnd?.(); // trigger whatever post-game logic was passed in (e.g. navigate back, resolve promise)
+      if (!normalGameEnd) {
+        this.cleanup(); // teardown visuals + socket
+        this.onGameEnd?.(); // trigger whatever post-game logic was passed in (e.g. navigate back, resolve promise)
+      }
     };
 
     this.activeSocket.onerror = (err) => console.error('WebSocket error', err);
@@ -360,16 +370,16 @@ export class GameManager {
   };
   window.addEventListener('blur', handleBlur);
 
-  // Return cleanup function
-  return () => {
-    clearInterval(movementInterval);
-    window.removeEventListener('keydown', handleKeyDown);
-    window.removeEventListener('keyup', handleKeyUp);
-    window.removeEventListener('blur', handleBlur);
-  };
-}
+    // Return cleanup function
+    return () => {
+      clearInterval(movementInterval);
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }
 
-private normalizeKey(key: string, localPlay: boolean) {
+  private normalizeKey(key: string, localPlay: boolean) {
     const lower = key.toLowerCase();
     if (lower === KeyBindings.player1.up) return { key: 'up', role: 'player1' };
     if (lower === KeyBindings.player1.down) return { key: 'down', role: 'player1' };
@@ -377,6 +387,47 @@ private normalizeKey(key: string, localPlay: boolean) {
     if (localPlay && key === KeyBindings.player2.down) return { key: 'down', role: 'player2' };
     return null;
   }
+
+  private showGameEndScreen(winner: 'player1' | 'player2', scores: { player1: number, player2: number }, concession: boolean) {
+    // Hide game elements
+    this.wrapper.querySelector('.canvas-wrapper')?.classList.add('hidden');
+    this.wrapper.querySelector('.controls')?.classList.add('hidden');
+
+    // Create or update end screen
+    if (!this.gameEndScreen) {
+      this.gameEndScreen = document.createElement('div');
+      this.gameEndScreen.className = 'game-end-screen flex flex-col items-center justify-center gap-4 p-8 text-center';
+      this.wrapper.appendChild(this.gameEndScreen);
+    }
+
+    const winnerName = winner === 'player1' 
+      ? this.gameState?.player1 || 'Player 1' 
+      : this.gameState?.player2 || 'Player 2';
+
+    let result;
+    if (concession) {
+      result = 'by forfeit!';
+    } else {
+      result = `${scores.player1}-${scores.player2}`;
+    }
+    
+    this.gameEndScreen.innerHTML = `
+      <h2 class="text-3xl font-bold">Match Ended</h2>
+      <div class="result text-2xl">
+        ${winnerName} wins ${result}
+      </div>
+      <button id="continueBtn" class="btn-control mt-8 px-8 py-2">
+        Continue
+      </button>
+    `;
+
+    const continueBtn = this.gameEndScreen.querySelector('#continueBtn') as HTMLButtonElement;
+    continueBtn.onclick = () => {
+      this.cleanup(); // Now using the unified cleanup
+      this.onGameEnd?.(); // Call the callback after cleanup
+    };
+  }
+
 
   private createGameContainer(): HTMLDivElement {
     const wrapper = document.createElement('div');
