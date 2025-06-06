@@ -33,7 +33,7 @@ const oAuth2Client = new OAuth2Client(
   GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET,
   GOOGLE_REDIRECT_URI
-);
+)
 
 // Authentication middleware
 const authenticateToken = async (request, reply) => {
@@ -485,150 +485,155 @@ fastify.get('/google', async (request, reply) => {
 
 // Update the Google callback route to handle errors better
 fastify.get('/google/callback', async (request, reply) => {
-  console.log('Received Google callback with query:', request.query);
-  const code = request.query.code;
-  if (!code) {
-    console.error('No code provided in callback');
-    return reply.code(400).send('No code provided');
-  }
-
-  try {
-    console.log('Getting tokens from Google...');
-    const { tokens } = await oAuth2Client.getToken(code);
-    oAuth2Client.setCredentials(tokens);
-    console.log('Getting user info from Google...');
-    const userInfoRes = await oAuth2Client.request({
-      url: 'https://www.googleapis.com/oauth2/v2/userinfo',
-    });
-    const user = userInfoRes.data;
-    console.log('Got user info:', user);
-    
-    // Find or create user in DB
-    return new Promise((resolve, reject) => {
-      db.get('SELECT * FROM USER WHERE email = ?', [user.email], async (err, existingUser) => {
-        if (err) {
-          console.error('Database error:', err);
-          reply.code(500).send({ error: 'Database error' });
-          reject(err);
-          return;
-        }
-
-        let userId;
-        if (existingUser) {
-          userId = existingUser.id;
-          // Check if 2FA is enabled
-          if (existingUser.two_factor_enabled) {
-            // Generate a temporary token for 2FA verification
-            const tempToken = jwt.sign(
-              { id: userId, email: user.email, temp: true },
-              process.env.JWT_SECRET,
-              { expiresIn: '5m' }
-            );
-            
-            // Redirect to frontend with temp token and 2FA required flag
-            const redirectData = {
-              requiresTwoFactor: true,
-              tempToken: tempToken,
-              email: user.email,
-              username: existingUser.username
-            };
-            const base64Data = Buffer.from(JSON.stringify(redirectData)).toString('base64');
-            reply.redirect(`/?data=${base64Data}`);
-            resolve();
-            return;
-          }
-        } else {
-          // Create new user with a proper username
-          const baseUsername = user.name || user.email.split('@')[0];
-          let username = baseUsername;
-          let counter = 1;
-          
-          // Check if username exists and append a number if it does
-          while (true) {
-            const existingUsername = await new Promise((resolve) => {
-              db.get('SELECT id FROM USER WHERE username = ?', [username], (err, row) => {
-                resolve(row);
-              });
-            });
-            
-            if (!existingUsername) break;
-            username = `${baseUsername}${counter}`;
-            counter++;
-          }
-
-          const result = await new Promise((resolve, reject) => {
-            db.run(
-              'INSERT INTO USER (username, email, password, status) VALUES (?, ?, ?, ?)',
-              [username, user.email, 'google-auth', 'online'],
-              function(err) {
-                if (err) reject(err);
-                else resolve(this.lastID);
-              }
-            );
-          });
-          userId = result;
-        }
-
-        // Generate tokens for successful login
-        const accessToken = jwt.sign(
-          { id: userId, email: user.email },
-          process.env.JWT_SECRET,
-          { expiresIn: '15m' }
-        );
-
-        const refreshToken = jwt.sign(
-          { id: userId },
-          process.env.JWT_REFRESH_SECRET,
-          { expiresIn: '7d' }
-        );
-
-        // Store tokens in database
-        await new Promise((resolve, reject) => {
-          const expiresAt = new Date();
-          expiresAt.setMinutes(expiresAt.getMinutes() + 15);
-          
-          db.run(
-            'INSERT INTO AUTH (user_id, access_token, refresh_token, expires_at, auth_provider) VALUES (?, ?, ?, ?, ?)',
-            [userId, accessToken, refreshToken, expiresAt.toISOString(), 'google'],
-            (err) => {
-              if (err) reject(err);
-              else resolve();
-            }
-          );
-        });
-
-        // Get the user's username
-        const userRow = await new Promise((resolve, reject) => {
-          db.get('SELECT username FROM USER WHERE id = ?', [userId], (err, row) => {
-            if (err) reject(err);
-            else resolve(row);
-          });
-        });
-
-        // Prepare user data for frontend
-        const userData = {
-          id: userId,
-          email: user.email,
-          username: userRow.username,
-          status: 'online',
-          accessToken,
-          refreshToken
-        };
-
-        // Encode user data for URL
-        const base64Data = Buffer.from(JSON.stringify(userData)).toString('base64');
-        reply.redirect(`/?data=${base64Data}`);
-        resolve();
-      });
-    });
-  } catch (e) {
-    console.error('Google OAuth error:', e);
-    if (e.message.includes('invalid_grant')) {
-      return reply.redirect('/login');
-    }
-    return reply.code(500).send({ error: 'Google OAuth error', details: e.message });
-  }
-});
+	const code = request.query.code;
+	if (!code) {
+	  return reply.code(400).send('No code provided');
+	}
+  
+	try {
+	  // 1) Troca o code pelo token do Google
+	  const { tokens } = await oAuth2Client.getToken(code);
+	  oAuth2Client.setCredentials(tokens);
+  
+	  // 2) Pega informações do perfil Google (name, email, picture etc.)
+	  const userInfoRes = await oAuth2Client.request({
+		url: 'https://www.googleapis.com/oauth2/v2/userinfo'
+	  });
+	  const userInfo = userInfoRes.data; 
+	  // userInfo.email, userInfo.name, etc.
+  
+	  let userId;
+	  let username;
+	  let twoFactorEnabled = false;
+  
+	  // 3) Tenta buscar o usuário existente no database via e-mail
+	  try {
+		const { data: existingUser } = await axios.get(
+		  `${DB_URL}/users`,
+		  { params: { emailOrUsername: userInfo.email } }
+		);
+		if (existingUser.id) {
+		  // Usuário já existe: salva id e flags
+		  userId = existingUser.id;
+		  username = existingUser.username;
+		  twoFactorEnabled = existingUser.two_factor_enabled;
+		}
+	  } catch (err) {
+		// Se o axios GET retornar 404 (usuário não encontrado), cai aqui.
+		// Se for outro erro (500, timeout, etc.), deixa propagar abaixo.
+		if (!(err.response && err.response.status === 404)) {
+		  throw err;
+		}
+	  }
+  
+	  // 4) Se não encontrou usuário (userId ainda indefinido), registramos agora
+	  if (!userId) {
+		// 4.1) Gera um username único baseado no nome do Google
+		const baseUsername = userInfo.name || userInfo.email.split('@')[0];
+		let uniqueUsername = baseUsername;
+		let counter = 1;
+  
+		// Enquanto existir conflito, adiciona número
+		while (true) {
+		  try {
+			const { data: conflict } = await axios.get(
+			  `${DB_URL}/users`,
+			  { params: { emailOrUsername: uniqueUsername } }
+			);
+			if (!conflict.id) break;
+			uniqueUsername = `${baseUsername}${counter++}`;
+		  } catch (conflictErr) {
+			// Se o erro for 404 (não encontrado), o nome está livre
+			if (conflictErr.response && conflictErr.response.status === 404) {
+			  break;
+			}
+			// Se for outro erro, faça throw
+			throw conflictErr;
+		  }
+		}
+  
+		// 4.2) Cria o novo usuário no database. Senha pode ser string fixa ou aleatória,
+		// pois o login dele será feito pelo Google depois.
+		const { data: newUser } = await axios.post(
+		  `${DB_URL}/users`,
+		  {
+			username: uniqueUsername,
+			email: userInfo.email,
+			password: 'google-auth' // placeholder; não será usado no login via Google
+		  }
+		);
+  
+		userId = newUser.id;
+		username = newUser.username;
+		// twoFactorEnabled permanece false (não há two_factor_secret ainda)
+	  }
+  
+	  // 5) Se o usuário tiver 2FA habilitado, geramos um tempToken e redirecionamos para o front
+	  if (twoFactorEnabled) {
+		const tempToken = jwt.sign(
+		  { id: userId, email: userInfo.email, temp: true },
+		  process.env.JWT_SECRET,
+		  { expiresIn: '5m' }
+		);
+		const redirectData = {
+		  requiresTwoFactor: true,
+		  tempToken,
+		  email: userInfo.email,
+		  username
+		};
+		const base64Data = Buffer.from(JSON.stringify(redirectData)).toString('base64');
+		return reply.redirect(`/?data=${base64Data}`);
+	  }
+  
+	  // 6) Se não tiver 2FA, geramos tokens finais e salvamos em /auth-tokens
+	  const accessToken = jwt.sign(
+		{ id: userId, email: userInfo.email },
+		process.env.JWT_SECRET,
+		{ expiresIn: '15m' }
+	  );
+	  const refreshToken = jwt.sign(
+		{ id: userId },
+		process.env.JWT_REFRESH_SECRET,
+		{ expiresIn: '7d' }
+	  );
+	  const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+  
+	  await axios.post(
+		`${DB_URL}/auth-tokens`,
+		{
+		  user_id: userId,
+		  access_token: accessToken,
+		  refresh_token: refreshToken,
+		  expires_at: expiresAt,
+		  auth_provider: 'google'
+		}
+	  );
+  
+	  // 7) Prepara dados para o frontend e redireciona
+	  const userData = {
+		id: userId,
+		email: userInfo.email,
+		username,
+		status: 'online',
+		accessToken,
+		refreshToken
+	  };
+	  const base64Data = Buffer.from(JSON.stringify(userData)).toString('base64');
+	  return reply.redirect(`/?data=${base64Data}`);
+	  
+	} catch (err) {
+	  fastify.log.error('Google OAuth error:', err.toString());
+	  if (err.response && err.response.status === 404) {
+		// Se aqui vier um 404 (“/users” não encontrado por outro motivo),
+		// podemos redirecionar para uma página de erro ou tratar como queira.
+		return reply.code(401).send({ error: 'User lookup failed' });
+	  }
+	  if (err.message && err.message.includes('invalid_grant')) {
+		return reply.redirect('/login');
+	  }
+	  return reply.code(500).send({ error: 'Google OAuth error', details: err.toString() });
+	}
+  });
 
 // Add new route to handle 2FA verification for Google login
 fastify.post('/verify-google-2fa', async (request, reply) => {
