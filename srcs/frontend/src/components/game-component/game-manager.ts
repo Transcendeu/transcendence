@@ -31,6 +31,8 @@ export class GameManager {
 
       if (!matchInfo && isLocal) {
         await this.setupGame(name, null, 'player1', isLocal);
+      } else if (matchInfo?.gameId && matchInfo.local && isLocal) {
+        await this.setupGame(name, matchInfo.gameId, 'player1', isLocal);
       }
     } catch (error) {
       if (error instanceof Error && error.message.includes('404')) {
@@ -229,8 +231,8 @@ export class GameManager {
       if (matchControl && data.gameStatus) {
           switch (data.gameStatus) {
               case 'waiting':
-                  matchControl.textContent = 'Start';
-                  matchControl.disabled = false;
+                  matchControl.textContent = 'Waiting';
+                  matchControl.disabled = true;
                   break;
               case 'playing':
                   matchControl.textContent = 'Pause';

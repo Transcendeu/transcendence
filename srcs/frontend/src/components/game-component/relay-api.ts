@@ -9,7 +9,7 @@ export async function createGameSession(name: string, isLocal: boolean): Promise
   return json.gameId;
 }
 
-export async function checkPlayerMatch(name: string): Promise<{ gameId: string, players: string[] } | null> {
+export async function checkPlayerMatch(name: string): Promise<{ gameId: string, local: boolean, players: string[] } | null> {
   try {
     const encodedName = encodeURIComponent(name);
     const res = await fetch(`/session/by-name/${encodedName}`);

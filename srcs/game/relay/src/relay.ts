@@ -117,7 +117,7 @@ fastify.post('/session', async (req, reply) => {
 });
 
 fastify.get<{ Params: { name: string } }>('/session/by-name/:name', async (req, reply) => {
-  const gameId = nameToSession.get(req.params.name);
+  const gameId = nameToSession.get(decodeURIComponent(req.params.name));
   if (!gameId || !sessions.has(gameId)) return reply.code(404).send({ error: 'Session not found' });
 
   const session = sessions.get(gameId)!;
@@ -127,6 +127,7 @@ fastify.get<{ Params: { name: string } }>('/session/by-name/:name', async (req, 
   
   reply.send({ 
     gameId: session.id,
+    local: session.localGame,
     players
   });
 });
@@ -163,7 +164,7 @@ fastify.get<{Params: { gameId: string }}>('/ws/:gameId', { websocket: true }, (s
   const client: Client = {
     socket,
     role: 'spectator',
-    name: undefined, // assigned later
+    name: undefined,
     ready: false
   };
 
@@ -216,35 +217,38 @@ fastify.get<{Params: { gameId: string }}>('/ws/:gameId', { websocket: true }, (s
         };
         session.engineSocket.write(JSON.stringify(inputPayload) + '\n');
       }
-}
+  }
 
   });
 
-socket.on('close', () => {
-  console.log(`${client.name} disconnected.`);
-  client.socket = undefined;
-  client.ready = false;
+  socket.on('close', () => {
+    console.log(`${client.name} disconnected.`);
+    client.socket = undefined;
+    client.ready = false;
 
-  if (!bothPlayersConnected(session)) {
-    console.log(`One or both players disconnected from session ${session.id}. Sending 'pause' to engine.`);
-    session.engineSocket.write(JSON.stringify({ type: 'pause' }) + '\n');
-  }
+    if (!bothPlayersConnected(session)) {
+      console.log(`One or both players disconnected from session ${session.id}. Sending 'pause' to engine.`);
+      session.engineSocket.write(JSON.stringify({ type: 'pause' }) + '\n');
+    }
 
-  // If no active sockets are left in the session, start a cleanup timer
-  if (![...session.clients].some(isConnectedClient)) {
-    setTimeout(() => {
-      const stillEmpty = [...session.clients].every(c => !c.socket?.readyState);
-      if (stillEmpty) {
-        console.log(`Cleaning up empty session ${session.id}`);
-        session.engineSocket.end();
-        sessions.delete(session.id);
-      }
-    }, 30000); // 30 sec grace period
-  }
-});
+    if (!session.localGame && !bothPlayersConnected(session)) {
+      console.log(`One or both players disconnected from session ${session.id}. Sending 'pause' to engine.`);
+      session.engineSocket.write(JSON.stringify({ type: 'pause' }) + '\n');
+    }
 
+    // If no active sockets are left in the session, start a cleanup timer
+    if (![...session.clients].some(isConnectedClient)) {
+      setTimeout(() => {
+        const stillEmpty = [...session.clients].every(c => !c.socket?.readyState);
+        if (stillEmpty) {
+          console.log(`Cleaning up empty session ${session.id}`);
+          session.engineSocket.end();
+          sessions.delete(session.id);
+        }
+      }, 30000); // 30 sec grace period
+    }
+  });
 
-  console.log(`Client joined ${gameId} as ${client.role} ???? this is weird but we'll come back later`);
 });
 
 // PATCH /session/:id/local-mode
@@ -270,6 +274,11 @@ function isConnectedClient(client: Client): client is Client & { socket: WSSocke
 }
 
 function bothPlayersConnected(session: Session): boolean {
+  if (session.localGame) {
+    return [...session.clients].some(client => 
+      isConnectedClient(client) && client.role === 'player1');
+  }
+
   let player1Connected = false;
   let player2Connected = false;
 
@@ -278,7 +287,6 @@ function bothPlayersConnected(session: Session): boolean {
     if (client.role === 'player1') player1Connected = true;
     if (client.role === 'player2') player2Connected = true;
   }
-
   return player1Connected && player2Connected;
 }
 

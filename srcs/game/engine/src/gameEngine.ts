@@ -130,10 +130,9 @@ function handleGameConnection(gameId: string, socket: Socket) {
             break;
           case 'pause':
             pausePressed(event, game.state, gameId);
-            console.log("there are currently ", game.clients.size, `clients on ${gameId}`);
             break;
           case 'resume':
-            console.log(`[${gameId}] ${event.role} ${event.player} -> pressed resume)`);
+            resumePressed(event, game.state, gameId);
             break;
           case 'forfeit':
             console.log(`[${gameId}] ${event.role} ${event.player} -> pressed forfeit)`);
@@ -184,11 +183,11 @@ function getInitialGameState(scoreP1: number, scoreP2: number): GameState {
       y: 0.5,
       vx: 0.00025,
       vy: 0.0002,
-      radius: 0.007
+      radius: 0.008
     },
     paddles: {
-      player1: { x: 0.05, y: 0.4, width: 0.01, height: 0.2 },
-      player2: { x: 0.93, y: 0.4, width: 0.01, height: 0.2 },
+      player1: { x: 0.05, y: 0.4, width: 0.011, height: 0.2 },
+      player2: { x: 0.94, y: 0.4, width: 0.011, height: 0.2 },
     },
     scores: { player1: scoreP1, player2: scoreP2 },
     gameStatus: 'waiting',
@@ -200,16 +199,23 @@ function updatePaddles(state: GameState, inputs: InputStates, deltaTimeMs: numbe
   const speed = 0.0015 * deltaTimeMs;
   const now = Date.now();
 
-  // Player 1 movement
-  if (inputs.player1.up && !inputs.player1.down) {
-    state.paddles.player1.y = Math.max(0, state.paddles.player1.y - speed);
-  }
-  if (inputs.player1.down && !inputs.player1.up) {
-    state.paddles.player1.y = Math.min(1 - state.paddles.player1.height, state.paddles.player1.y + speed);
+  // Player 1 movement - added input timeout check (same as player2)
+  const player1InputFresh = (now - inputs.player1.lastUpdate) < 100; // 100ms timeout
+  if (player1InputFresh) {
+    if (inputs.player1.up && !inputs.player1.down) {
+      state.paddles.player1.y = Math.max(0, state.paddles.player1.y - speed);
+    }
+    if (inputs.player1.down && !inputs.player1.up) {
+      state.paddles.player1.y = Math.min(1 - state.paddles.player1.height, state.paddles.player1.y + speed);
+    }
+  } else {
+    // Reset inputs if they're too old
+    inputs.player1.up = false;
+    inputs.player1.down = false;
   }
 
-  // Player 2 movement - added input timeout check
-  const player2InputFresh = (now - inputs.player2.lastUpdate) < 100; // 100ms timeout
+  // Player 2 movement (unchanged)
+  const player2InputFresh = (now - inputs.player2.lastUpdate) < 100;
   if (player2InputFresh) {
     if (inputs.player2.up && !inputs.player2.down) {
       state.paddles.player2.y = Math.max(0, state.paddles.player2.y - speed);
@@ -218,7 +224,6 @@ function updatePaddles(state: GameState, inputs: InputStates, deltaTimeMs: numbe
       state.paddles.player2.y = Math.min(1 - state.paddles.player2.height, state.paddles.player2.y + speed);
     }
   } else {
-    // Reset inputs if they're too old
     inputs.player2.up = false;
     inputs.player2.down = false;
   }
@@ -314,7 +319,7 @@ function resetBall(state: GameState, direction: 1 | -1) {
   state.ball = {
     x: 0.5,
     y: 0.5,
-    radius: 0.015,
+    radius: 0.008,
     vx: baseSpeed * Math.cos(angle) * direction,
     vy: baseSpeed * Math.sin(angle),
   };
@@ -388,9 +393,36 @@ function isValidState(state: string): state is 'press' | 'release' {
 }
 
 function pausePressed(event: GameEvent, state: GameState, gameId: string) {
-      if (event.role && event.player)
-        state.gameStatus = 'paused';
-      else
-        state.gameStatus = 'queued';
-      console.log(`[${gameId}] ${event.role} ${event.player} -> pressed pause)`);
+  if (event.role && event.player) {
+    state.gameStatus = 'paused';
+    // Reset inputs when pausing
+    const game = games.get(gameId);
+    if (game) {
+      game.inputs.player1.up = false;
+      game.inputs.player1.down = false;
+      game.inputs.player2.up = false;
+      game.inputs.player2.down = false;
+    }
+  } else {
+    state.gameStatus = 'queued';
+  }
+  console.log(`[${gameId}] ${event.role} ${event.player} -> pressed pause)`);
+}
+
+function resumePressed(event: GameEvent, state: GameState, gameId: string) {
+  if (state.gameStatus !== 'paused' ) {
+    console.warn("Invalid resume sent from ", event.player, " with role ", event.role);
+    return;
+  }
+  if (event.role && event.player) {
+    state.gameStatus = 'playing';
+    const game = games.get(gameId);
+    if (game) {
+      game.inputs.player1.up = false;
+      game.inputs.player1.down = false;
+      game.inputs.player2.up = false;
+      game.inputs.player2.down = false;
+    }
+  }
+  console.log(`[${gameId}] ${event.role} ${event.player} -> pressed resume)`);
 }
