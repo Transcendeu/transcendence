@@ -20,9 +20,18 @@ vault
 
 ## Commands
 
-- `npm install`: Instala os pacotes do package.json
-- `npm run build`: Builda o projeto (pra JS)
-- `npm start`: Executa o projeto localmente
+> Não roda local somente com npm porque requer instância do Vault.
+
+Docker:
+- `docker-compose up --build -d`: Sobe o container
+- `docker-compose logs api`: Exibe os logs
+- `docker-compose down`: Derruba o container
+
+NPM:
+- ~~`npm install`: Instala os pacotes do package.json~~
+- ~~`npm run build`: Builda o projeto (pra JS)~~
+- ~~`npm start`: Executa o projeto localmente~~
+
 
 ## Curls
 

@@ -21,7 +21,7 @@ The project consists of multiple services:
 
 ## Features
 
-### Frontend - Indy
+### Frontend
 
 - [x] Tailwind CSS
 
@@ -41,12 +41,12 @@ The project consists of multiple services:
 - [ ] Match history and statistics
 - [ ] Game database implementation
 
-### Infrastructure - Indy
+### Infrastructure
 - [x] Nginx web server configuration
 - [x] ModSecurity implementation
 - [x] Web Application Firewall (WAF)
 - [x] Frontend deployment setup
-- [ ] Vault Hashicorp
+- [x] Vault Hashicorp
 
 ### CLI - Mark
 - [ ] Replacing Basic Pong with Server-Side Pong and Implementing an API
