@@ -1,6 +1,3 @@
-import dotenv from 'dotenv';
-dotenv.config();
-
 import { Client } from '@litehex/node-vault';
 
 const vault = new Client({
@@ -11,7 +8,7 @@ const vault = new Client({
 export async function writeSecret(path: string, data: Record<string, any>): Promise<void> {
   await vault.write({
     path: `secret/data/${path}`,
-    data,
+    data: { data },
   });
 }
 

@@ -28,14 +28,14 @@ vault
 
 - Cadastrar segredo:
   ```
-  curl -X POST http://localhost:3000/secrets/minha-chave \
+  curl -X POST http://localhost:3000/secrets/<minha-chave> \
     -H "Content-Type: application/json" \
-    -d '{"username": "admin", "password": "supersecreta"}'
+    -d '{"username": "meuuser", "password": "supersecreta"}'
   ```
 
 - Buscar segredo:
   ```
-  curl http://localhost:3000/secrets/minha-chave
+  curl http://localhost:3000/secrets/<minha-chave>
   ```
 
 ## Notas
