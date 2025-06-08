@@ -40,14 +40,12 @@ export class CanvasRenderer implements GameRenderer {
     const now = performance.now();
     const deltaTime = this.lastFrameTime ? now - this.lastFrameTime : 16; // Default to 60fps
     this.lastFrameTime = now;
-    // Update pulse phase (wrapped between 0 and 2π)
     this.pulsePhase = (this.pulsePhase + this.pulseSpeed * deltaTime) % (Math.PI * 2);
 
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     this.setBackground();
 
-    // Calculate pulsing dash pattern
-    const pulseIntensity = (Math.sin(this.pulsePhase) + 1) / 2; // 0-1 range
+    const pulseIntensity = (Math.sin(this.pulsePhase) + 1) / 2;
     const minGlow = 5;
     const maxGlow = 25;
     const glowSpan = minGlow + pulseIntensity * (maxGlow - minGlow);
@@ -61,7 +59,6 @@ export class CanvasRenderer implements GameRenderer {
     this.ctx.lineTo(this.canvas.width / 2, this.canvas.height);
     this.ctx.stroke();
     this.ctx.setLineDash([]);
-
 
     this.ctx.shadowColor = GameColors.glow;
     this.ctx.shadowBlur = glowSpan;
@@ -78,8 +75,6 @@ export class CanvasRenderer implements GameRenderer {
         paddle.height * this.canvas!.height
       );
     });
-
-
     // Draw ball
     if (gameStatus !== 'queued') {
       this.ctx.fillStyle = GameColors.ball;
@@ -97,19 +92,28 @@ export class CanvasRenderer implements GameRenderer {
     this.ctx.shadowBlur = 3;
     // Game status messages
     if (gameStatus === 'waiting' || gameStatus === 'queued') {
-      const message =
-        gameStatus === 'waiting' ? 'Press SPACE to resume' : 'Waiting for other players';
+      const isWaiting = gameStatus === 'waiting';
+      const mainMessage = isWaiting ? 'Press SPACE to resume' : 'Waiting for other players';
 
       this.ctx.font = `${Math.floor(this.canvas.height * 0.07)}px ${GameColors.text.font}`;
-      this.ctx.fillStyle =
-        gameStatus === 'waiting'
-          ? GameColors.text.primary
-          : GameColors.text.secondary;
-
+      this.ctx.fillStyle = isWaiting ? GameColors.text.primary : GameColors.text.secondary;
       this.ctx.textAlign = 'center';
       this.ctx.textBaseline = 'middle';
 
-      this.ctx.fillText(message, this.canvas.width / 2, this.canvas.height * 0.91);
+      this.ctx.fillText(mainMessage, this.canvas.width / 2, this.canvas.height * 0.91);
+
+      // Match control hints
+      const instructions = ['Move paddle with W S','⬆️ ⬇️ for local match'];
+      this.ctx.font = `${Math.floor(this.canvas.height * 0.04)}px ${GameColors.text.font}`;
+      this.ctx.fillStyle = GameColors.text.primary;
+
+      instructions.forEach((line, index) => {
+        this.ctx!.fillText(
+          line,
+          this.canvas!.width / 2,
+          this.canvas!.height * (0.15 + index * 0.05)
+        );
+      });
     }
     this.ctx.shadowBlur = 0;
   }
@@ -135,17 +139,16 @@ export class CanvasRenderer implements GameRenderer {
   }
 
   resize() {
-  if (!this.canvas) return;
+    if (!this.canvas) return;
 
-  const parent = this.canvas.parentElement;
-  if (!parent) return;
+    const parent = this.canvas.parentElement;
+    if (!parent) return;
 
-  const rect = parent.getBoundingClientRect();
+    const rect = parent.getBoundingClientRect();
 
-  this.canvas.width = rect.width;
-  this.canvas.height = rect.height;
-}
-
+    this.canvas.width = rect.width;
+    this.canvas.height = rect.height;
+  }
 
 
   cleanup() {

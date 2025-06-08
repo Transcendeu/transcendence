@@ -1,15 +1,16 @@
 const Neon = {
-  cyan: '#0ff',
-  magenta: '#f0f',
-  yellow: '#ff0',
-  green: '#0f0',
-  blue: '#00f',
-  red: '#f00',
-  orange: '#f80',
-  purple: '#a0f',
-  white: '#fff',
-  teal: '#08f'
+  cyan: '#00ffff',
+  magenta: '#ff00ff',
+  yellow: '#ffff00',
+  green: '#00ff00',
+  blue: '#0000ff',
+  red: '#ff0000',
+  orange: '#ff8800',
+  purple: '#aa00ff',
+  white: '#ffffff',
+  teal: '#0088ff'
 };
+
 
 export const GameColors = {
   background: 'black',
@@ -23,6 +24,7 @@ export const GameColors = {
     font: 'Orbitron, Arial',
     primary: Neon.white,
     secondary: Neon.red,
-  }
+  },
+  fieldLine: Neon.green
 } as const;
 

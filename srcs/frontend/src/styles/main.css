@@ -181,6 +181,11 @@ button#forfeit.conceding {
   @apply bg-red-700 font-bold shadow-[0_0_0_4px_white,0_0_10px_8px_red];
 }
 
+.btn-toggle {
+  @apply shadow-[0_0_0px_#fff] hover:shadow-[0_0_10px_#0ff];
+}
+
+
 .duck {
   width: 32px;
   height: 32px;

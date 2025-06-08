@@ -1,4 +1,5 @@
 import { CanvasRenderer } from './renderer/canvas-renderer';
+import { BabylonRenderer } from './renderer/babylon-renderer';
 import { GameRenderer, PaddleState, BallState } from './renderer/interfaces';
 import { createGameSession, checkPlayerMatch } from './relay-api';
 import { KeyBindings } from './constants/keys';
@@ -20,7 +21,7 @@ export class GameManager {
   
   constructor(
       private rootContainer: HTMLElement,
-      private onGameEnd?: () => void) { //TODO: check/implement this
+      private onGameEnd?: () => void) {
       this.wrapper = this.createGameContainer();
       this.rootContainer.replaceChildren(this.wrapper);
     }
@@ -36,7 +37,6 @@ export class GameManager {
       }
     } catch (error) {
       if (error instanceof Error && error.message.includes('404')) {
-        // Treat 404 as "no match found" and create new game
         return;
       }
     }
@@ -63,17 +63,12 @@ export class GameManager {
   }
 
   private async swapRenderer() {
-    // Cleanup only the renderer
     if (this.currentRenderer) {
       this.currentRenderer.cleanup();
       this.currentRenderer = null;
     }
-    
-    // Initialize new renderer
-    this.currentRenderer = /*this.alternateRender ? new B-Renderer() :*/ new CanvasRenderer(this.wrapper);
+    this.currentRenderer = this.alternateRender ? new BabylonRenderer(this.wrapper) : new CanvasRenderer(this.wrapper);
     await this.currentRenderer.setup();
-    
-    // Reapply background and controls
     this.currentRenderer.setBackground();
     this.currentRenderer.showGameControls();
   }
@@ -96,67 +91,72 @@ export class GameManager {
     }
   }
 
-  async setupGame(
-    playerName: string,
-    gameId: string | null,
-    role: string,
-    localPlay: boolean) {
-    if (!this.currentRenderer) {
-      this.currentRenderer = /*this.alternateRender ? new B-Renderer() :*/ new CanvasRenderer(this.wrapper);
-      await this.currentRenderer.setup();
-    }
-
-    if (!gameId) {
-      gameId = await createGameSession(playerName, localPlay);
-    }
-
-    this.gameState = null;
-    let normalGameEnd = false;
-
-    if (this.activeSocket) {
-      this.activeSocket.close();
-    }
-
-    this.activeSocket = new WebSocket(`ws://${location.host}/ws/${gameId}`);
-
-    this.activeSocket.onopen = () => {
-      console.log('WebSocket connected');
-      this.activeSocket?.send(JSON.stringify({ type: 'join', name: playerName, role }));
-      this.currentRenderer?.setBackground();
-      this.currentRenderer?.showGameControls();
-      this.setupInputHandlers(this.activeSocket!, localPlay);
-    };
-
-    this.activeSocket.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.type === 'state') {
-        this.gameState = {
-          paddles: data.paddles,
-          ball: data.ball,
-          status: data.gameStatus,
-          player1: data.playerNames.player1,
-          player2: data.playerNames.player2,
-        };
-
-        this.currentRenderer?.drawGameState(data.paddles, data.ball, this.gameState.status);
-        this.updateGame(data);
-      } else if (data.type === 'game_end') {
-        normalGameEnd = true;
-        this.showGameEndScreen(data.winner, data.scores, data.gameStatus === 'forfeited');
+  async setupGame(playerName: string, gameId: string | null, role: string, localPlay: boolean) {
+      if (!this.currentRenderer) {
+        this.currentRenderer = this.alternateRender ? new BabylonRenderer(this.wrapper) : new CanvasRenderer(this.wrapper);
+        await this.currentRenderer.setup();
       }
-    };
 
-    this.activeSocket.onclose = () => {
-      console.log('WebSocket closed');
-      if (!normalGameEnd) {
-        this.cleanup(); // teardown visuals + socket
-        this.onGameEnd?.(); // trigger whatever post-game logic was passed in (e.g. navigate back, resolve promise)
+      if (!gameId) {
+        gameId = await createGameSession(playerName, localPlay);
       }
-    };
 
-    this.activeSocket.onerror = (err) => console.error('WebSocket error', err);
+      this.gameState = null;
+      let normalGameEnd = false;
 
-    const forfeitButton = document.getElementById('forfeit') as HTMLButtonElement;
+      if (this.activeSocket) {
+        this.activeSocket.close();
+      }
+
+      this.activeSocket = new WebSocket(`ws://${location.host}/ws/${gameId}`);
+
+      this.activeSocket.onopen = () => {
+        console.log('WebSocket connected');
+        this.activeSocket?.send(JSON.stringify({ type: 'join', name: playerName, role }));
+        this.currentRenderer?.setBackground();
+        this.currentRenderer?.showGameControls();
+        this.setupInputHandlers(this.activeSocket!, localPlay);
+      };
+
+      this.activeSocket.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.type === 'state') {
+          this.gameState = {
+            paddles: data.paddles,
+            ball: data.ball,
+            status: data.gameStatus,
+            player1: data.playerNames.player1,
+            player2: data.playerNames.player2,
+          };
+
+          this.currentRenderer?.drawGameState(data.paddles, data.ball, this.gameState.status);
+          this.updateGame(data);
+        } else if (data.type === 'game_end') {
+          normalGameEnd = true;
+          this.showGameEndScreen(data.winner, data.scores, data.gameStatus === 'forfeited');
+        }
+      };
+
+      this.activeSocket.onclose = () => {
+        console.log('WebSocket closed');
+        if (!normalGameEnd) {
+          this.cleanup();
+          this.onGameEnd?.();
+        }
+      };
+
+      this.activeSocket.onerror = (err) => console.error('WebSocket error', err);
+
+
+      const toggleBtn = document.getElementById('toggleRenderer') as HTMLButtonElement;
+      toggleBtn.textContent = this.alternateRender ? '2D' : '3D';
+
+      toggleBtn.onclick = async () => {
+        await this.toggleRenderer();
+        toggleBtn.textContent = this.alternateRender ? '2D' : '3D';
+      };
+
+      const forfeitButton = document.getElementById('forfeit') as HTMLButtonElement;
       let forfeitTimeout: number | null = null;
       let isConfirming = false;
       let cooldown = false;
@@ -185,45 +185,38 @@ export class GameManager {
         startCooldown();
 
         if (isConfirming) {
-          // Second click - confirm forfeit
           this.activeSocket?.send(JSON.stringify({ type: 'forfeit', name: playerName, role }));
           resetForfeitButton();
         } else {
-          // First click - start confirmation
           isConfirming = true;
           forfeitButton.textContent = 'Forfeit the match?';
           forfeitButton.classList.add('conceding');
-          
-          // 5-second confirmation window
           forfeitTimeout = window.setTimeout(resetForfeitButton, 5000);
         }
       });
-
-    
-    const matchControl = document.getElementById('matchControl') as HTMLButtonElement;
-    matchControl.onclick = () => {
+      
+      const matchControl = document.getElementById('matchControl') as HTMLButtonElement;
+      matchControl.onclick = () => {
         if (!this.gameState) return;
-        
         let type: string;
         switch (this.gameState.status) {
-            case 'waiting':
-                type = 'ready';
-                break;
-            case 'playing':
-                type = 'pause';
-                break;
-            case 'paused':
-                type = 'resume';
-                break;
-            default:
-                return;
+          case 'waiting':
+            type = 'ready';
+            break;
+          case 'playing':
+            type = 'pause';
+            break;
+          case 'paused':
+            type = 'resume';
+            break;
+          default:
+            return;
         }
-        
         this.activeSocket?.send(JSON.stringify({ type: type, name: playerName, role }));
-    };
-  }
+      };
+    }
 
-  private updateGame(data: any) {   
+    private updateGame(data: any) {
       const scoreP1 = document.getElementById('score-player1');
       const scoreP2 = document.getElementById('score-player2');
       if (scoreP1 && scoreP2) {
@@ -239,136 +232,118 @@ export class GameManager {
 
       const matchControl = document.getElementById('matchControl') as HTMLButtonElement;
       if (matchControl && data.gameStatus) {
-          switch (data.gameStatus) {
-              case 'waiting':
-                  matchControl.textContent = 'Waiting';
-                  matchControl.disabled = true;
-                  break;
-              case 'playing':
-                  matchControl.textContent = 'Pause';
-                  matchControl.disabled = false;
-                  break;
-              case 'paused':
-                  matchControl.textContent = 'Resume';
-                  matchControl.disabled = false;
-                  break;
-              case 'queued':
-                  matchControl.textContent = 'Waiting';
-                  
-                  matchControl.disabled = true;
-                  break;
-              default:
-                  matchControl.disabled = true;
-          }
-            // Toggle glow effect only when enabled
-            if (matchControl.disabled) {
-                matchControl.classList.remove('btn-start');
-            } else {
-                matchControl.classList.add('btn-start');
-            }
+        switch (data.gameStatus) {
+          case 'waiting':
+            matchControl.textContent = 'Waiting';
+            matchControl.disabled = true;
+            break;
+          case 'playing':
+            matchControl.textContent = 'Pause';
+            matchControl.disabled = false;
+            break;
+          case 'paused':
+            matchControl.textContent = 'Resume';
+            matchControl.disabled = false;
+            break;
+          case 'queued':
+            matchControl.textContent = 'Waiting';
+            matchControl.disabled = true;
+            break;
+          default:
+            matchControl.disabled = true;
+        }
+        if (matchControl.disabled) {
+            matchControl.classList.remove('btn-start');
+        } else {
+            matchControl.classList.add('btn-start');
+        }
       }
-  }
+    }
 
-  private setupInputHandlers(socket: WebSocket, localPlay: boolean) {
-  // Track key states and timestamps
-  const keyState = {
-    player1: { up: false, down: false },
-    player2: { up: false, down: false },
-    lastSent: 0
-  };
+    private setupInputHandlers(socket: WebSocket, localPlay: boolean) {
+    const keyState = {
+      player1: { up: false, down: false },
+      player2: { up: false, down: false },
+      lastSent: 0
+    };
 
-  // Create throttled send function
-  const sendInput = (() => {
-    let lastSendTime = 0;
-    return (role: 'player1' | 'player2', key: 'up' | 'down', state: 'press' | 'release') => {
-      const now = Date.now();
-      if (state === 'release' || now - lastSendTime >= 50) {
-        socket.send(JSON.stringify({
-          type: 'input',
-          input: key,
-          state,
-          role
-        }));
-        lastSendTime = now;
+    const sendInput = (() => {
+      let lastSendTime = 0;
+      return (role: 'player1' | 'player2', key: 'up' | 'down', state: 'press' | 'release') => {
+        const now = Date.now();
+        if (state === 'release' || now - lastSendTime >= 50) {
+          socket.send(JSON.stringify({
+            type: 'input',
+            input: key,
+            state,
+            role
+          }));
+          lastSendTime = now;
+        }
+      };
+    })();
+
+    const onKeyChange = (e: KeyboardEvent, isKeyDown: boolean) => {
+      if (e.code === KeyBindings.ready) {
+        if (this.gameState?.status !== 'waiting') return;
+        e.preventDefault();
+        if (isKeyDown && !e.repeat) {
+          socket.send(JSON.stringify({
+            type: 'input',
+            input: 'space',
+            state: 'press',
+            role: 'player1'
+          }));
+        }
+        return;
+      }
+
+      const norm = this.normalizeKey(e.key, localPlay);
+      if (!norm) return;   
+      const { key, role } = norm;
+      if (localPlay && (e.key === KeyBindings.player2.up || e.key === KeyBindings.player2.down)) {
+        e.preventDefault();
+      }
+      if ((keyState as any)[role][key] !== isKeyDown) {
+        (keyState as any)[role][key] = isKeyDown;
+        if (role === 'player1' || role === 'player2' ) {
+          if (key === 'up' || key === 'down') {
+            sendInput(role, key, isKeyDown ? 'press' : 'release');
+          }
+        }
       }
     };
-  })();
 
-  
-  const onKeyChange = (e: KeyboardEvent, isKeyDown: boolean) => {
-    if (e.code === KeyBindings.ready) {
-      if (this.gameState?.status !== 'waiting') return;
-      e.preventDefault();
-      if (isKeyDown && !e.repeat) {
-        socket.send(JSON.stringify({
-          type: 'input',
-          input: 'space',
-          state: 'press',
-          role: 'player1'
-        }));
-      }
-      return;
-    }
-
-    // Normalize key input
-    const norm = this.normalizeKey(e.key, localPlay);
-    if (!norm) return;
-    
-    const { key, role } = norm;
-
-    // Prevent default for arrow keys
-    if (localPlay && (e.key === KeyBindings.player2.up || e.key === KeyBindings.player2.down)) {
-      e.preventDefault();
-    }
-
-    // Update state and send immediately
-    if ((keyState as any)[role][key] !== isKeyDown) {
-      (keyState as any)[role][key] = isKeyDown;
-      if (role === 'player1' || role === 'player2' ) {
-        if (key === 'up' || key === 'down') {
-          sendInput(role, key, isKeyDown ? 'press' : 'release');
+    const movementInterval = setInterval(() => {
+      const now = Date.now();
+      if (now - keyState.lastSent < 50) return; // Throttle to 50ms
+      keyState.lastSent = now;
+      for (const role of ['player1', 'player2'] as const) {
+        for (const key of ['up', 'down'] as const) {
+          if (keyState[role][key]) {
+            sendInput(role, key, 'press');
+          }
         }
       }
-    }
-  };
+    }, 16); // ~60fps
 
+    const handleKeyDown = (e: KeyboardEvent) => onKeyChange(e, true);
+    const handleKeyUp = (e: KeyboardEvent) => onKeyChange(e, false);
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
 
-  // Continuous movement handler
-  const movementInterval = setInterval(() => {
-    const now = Date.now();
-    if (now - keyState.lastSent < 50) return; // Throttle to 50ms
-    
-    keyState.lastSent = now;
-    
-    // Send continuous press for any held keys
-    for (const role of ['player1', 'player2'] as const) {
-      for (const key of ['up', 'down'] as const) {
-        if (keyState[role][key]) {
-          sendInput(role, key, 'press');
+    // Clean up when window loses focus
+    const handleBlur = () => {
+      for (const role of ['player1', 'player2'] as const) {
+        for (const key of ['up', 'down'] as const) {
+          if (keyState[role][key]) {
+            keyState[role][key] = false;
+            sendInput(role, key, 'release');
+          }
         }
       }
-    }
-  }, 16); // ~60fps
-
-  // Set up event listeners
-  const handleKeyDown = (e: KeyboardEvent) => onKeyChange(e, true);
-  const handleKeyUp = (e: KeyboardEvent) => onKeyChange(e, false);
-  
-  window.addEventListener('keydown', handleKeyDown);
-  window.addEventListener('keyup', handleKeyUp);
-
-  // Clean up when window loses focus
-  const handleBlur = () => {
-    for (const role of ['player1', 'player2'] as const) {
-      for (const key of ['up', 'down'] as const) {
-        if (keyState[role][key]) {
-          keyState[role][key] = false;
-          sendInput(role, key, 'release');
-        }
-      }
-    }
-  };
-  window.addEventListener('blur', handleBlur);
+    };
+    window.addEventListener('blur', handleBlur);
 
     // Return cleanup function
     return () => {
@@ -464,10 +439,13 @@ export class GameManager {
 
       <!-- Footer controls -->
       <footer class="controls w-full flex justify-between items-center px-2 py-1">
-        <div class="w-[48%] flex justify-center">
+        <div class="w-[33%] flex justify-center">
           <button id="matchControl" class="btn-control btn-start">Start</button>
         </div>
-        <div class="w-[48%] flex justify-center">
+        <div class="w-[33%] flex justify-center">
+          <button id="toggleRenderer" class="btn-control btn-toggle">3D</button>
+        </div>
+        <div class="w-[33%] flex justify-center">
           <button id="forfeit" class="btn-control btn-forfeit">Concede</button>
         </div>
       </footer>
