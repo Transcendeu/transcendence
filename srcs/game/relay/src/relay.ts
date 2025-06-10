@@ -143,13 +143,22 @@ fastify.get<{ Params: { name: string } }>('/session/by-name/:name', async (req, 
 
   const session = sessions.get(gameId)!;
   
-  // At minimum, player1Name should exist if session exists
-  const players = [session.player1Name].filter(Boolean) as string[];
+  const players = [];
+  let isSpectator = false;
+  
+  for (const client of session.clients) {
+    if ((client.role === 'player1' || client.role === 'player2') && client.name) {
+      players.push(client.name);
+    } else if (client.role === 'spectator' && client.name === decodeURIComponent(req.params.name)) {
+      isSpectator = true;
+    }
+  }
   
   reply.send({ 
     gameId: session.id,
     local: session.localGame,
-    players
+    players,
+    isSpectator
   });
 });
 
@@ -250,15 +259,24 @@ fastify.get<{Params: { gameId: string }}>('/ws/:gameId', { websocket: true }, (s
     const session = sessions.get(gameId);
     if (!session || session.engineSocket.destroyed) return;
 
-    if (!bothPlayersConnected(session)) {
-      console.log(`One or both players disconnected from session ${session.id}. Sending 'pause' to engine.`);
-      session.engineSocket.write(JSON.stringify({ type: 'pause' }) + '\n');
-    }
+      if (client.role === 'player1' || client.role === 'player2') {
+        if (!bothPlayersConnected(session)) {
+          console.log(`Player disconnected from session ${session.id}. Sending 'pause' to engine.`);
+          session.engineSocket.write(JSON.stringify({ type: 'pause' }) + '\n');
+        }
 
-    if (!session.localGame && !bothPlayersConnected(session)) {
-      console.log(`One or both players disconnected from session ${session.id}. Sending 'pause' to engine.`);
-      session.engineSocket.write(JSON.stringify({ type: 'pause' }) + '\n');
-    }
+        const activePlayers = [...session.clients].filter(c => 
+          isConnectedClient(c) && (c.role === 'player1' || c.role === 'player2'));
+
+        if (activePlayers.length === 0) {
+          console.log(`No players left in session ${session.id}, cleaning up spectators`);
+          for (const client of session.clients) {
+            if (isConnectedClient(client) && client.role === 'spectator') {
+              client.socket.close(1000, 'Game ended - no players remaining');
+            }
+          }
+        }
+      }
 
     // If no active sockets are left in the session, start a cleanup timer
     if (![...session.clients].some(isConnectedClient)) {

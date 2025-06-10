@@ -20,23 +20,27 @@ export class MatchFinder {
       const existingMatch = await checkPlayerMatch(playerName);
 
       const renderButton = (match: typeof existingMatch): string => {
-        let returnHtml: string = '<button id="create-btn">Create New Match</button>';
+        let returnHtml: string = '<button id="create-btn" class="menu-button">Create New Match</button>';
         if (match) {
           const opponent = match.players.find(name => name !== playerName);
-          returnHtml += '<br><button id="join-btn">Join Existing Match</button>';
-          returnHtml += `<div>You have an ongoing ${match.local ? 'local match' : `match against ${opponent}`}, it will be forfeit if you create or join a different one</div>`;
+          returnHtml += '<button id="join-btn" class="menu-button mt-4">Join Existing Match</button>';
+          returnHtml += `<div class="warning-message mt-4 text-neonCyan text-xs text-center">You have an ongoing ${match.local ? 'local match' : `match against ${opponent}`}, it will be forfeit if you create or join a different one</div>`;
         }
         return returnHtml;
       };
 
       this.container.innerHTML = `
-        <div class="match-finder">
-          <h2>Online Match</h2>
+        <div class="match-finder flex flex-col items-center gap-6 p-8 bg-black bg-opacity-80 border-2 border-neonCyan shadow-[0_0_20px_#0ff] max-w-[500px] w-full">
+          <h2 class="text-neonCyan text-2xl text-center mb-4">Online Match</h2>
           ${renderButton(existingMatch)}
-          <div class="search-box">
-            <input id="player-search" type="text" placeholder="Player name">
-            <div>Find a player</div>
-            <button id="search-btn">Search</button>
+          <div class="search-box flex flex-col gap-4 w-full">
+            <div class="relative mb-6"> <!-- Added mb-6 for more space below the input -->
+              <input id="player-search" type="text" placeholder="Player name" 
+                class="w-full p-3 bg-black border border-neonCyan text-white font-press text-xs
+                focus:outline-none focus:border-neonMagenta focus:shadow-[0_0_15px_rgba(255,0,255,0.4)]">
+              <div class="absolute -bottom-5 left-0 text-neonMagenta text-xs">Find a player</div>
+            </div>
+            <button id="search-btn" class="menu-button">Search</button>
           </div>
         </div>
       `;
@@ -60,45 +64,56 @@ export class MatchFinder {
         const input = this.container.querySelector('#player-search') as HTMLInputElement;
         const searchName = input.value.trim();
         const resultsDiv = this.container.querySelector('.search-results') || document.createElement('div');
-        resultsDiv.className = 'search-results';
+        resultsDiv.className = 'search-results mt-6 w-full max-w-[500px]';
         
         if (!searchName) {
-          resultsDiv.innerHTML = '<div class="search-message">Please enter a player name</div>';
+          resultsDiv.innerHTML = '<div class="search-message text-neonCyan text-xs text-center">Please enter a player name</div>';
           if (!this.container.contains(resultsDiv)) this.container.appendChild(resultsDiv);
           return;
         }
 
-        // Store match info in class instance
+        
         const currentMatch = await checkPlayerMatch(searchName);
         resultsDiv.innerHTML = '';
 
         if (!currentMatch) {
-            resultsDiv.innerHTML = `<div class="search-message">No active match found for ${searchName}</div>`;
+            resultsDiv.innerHTML = `<div class="search-message text-neonCyan text-xs text-center">No active match found for ${searchName}</div>`;
         } else {
           const isCurrentPlayerInMatch = currentMatch.players.includes(playerName);
-          const opponent = currentMatch.players.find(name => name !== searchName);
+          const isSearchPlayerSpectating = currentMatch.isSpectator;
+          const activePlayers = currentMatch.players;
           if (isCurrentPlayerInMatch) {
+            const opponent = activePlayers.find(name => name !== playerName);
             resultsDiv.innerHTML = `
-              <div class="search-result">
-                <p>You have a match against ${searchName}</p>
-                <button id="join-existing-match">
+              <div class="search-result p-4 border-2 border-neonCyan bg-black bg-opacity-50 flex flex-col gap-3 shadow-[0_0_10px_#0ff]">
+                <p class="text-neonCyan text-sm">You have a match against ${opponent}</p>
+                <button id="join-existing-match" class="menu-button">
                   Join Match
                 </button>
               </div>
             `;
           } else {
+            let matchStatus;
+            if (isSearchPlayerSpectating) {
+              matchStatus = `${searchName} is spectating`;
+            } else if (activePlayers.length === 2) {
+              matchStatus = `${activePlayers[0]} vs ${activePlayers[1]}`;
+            } else {
+              matchStatus = `${searchName} is waiting for an opponent`;
+            }
+
             resultsDiv.innerHTML = `
-              <div class="search-result">
-                <p>Match found ${searchName} ${opponent ? `(vs ${opponent})` : 'waiting for an opponent'}</p>
-                <button id="spectate-match">
+              <div class="search-result p-4 border-2 border-neonCyan bg-black bg-opacity-50 flex flex-col gap-3 shadow-[0_0_10px_#0ff]">
+                <p class="text-neonCyan text-sm">${matchStatus}</p>
+                <button id="spectate-match" class="menu-button">
                   Join as Spectator
                 </button>
-              </div>
             `;
 
-            if (!opponent || opponent === playerName) {
+            if (!isSearchPlayerSpectating && activePlayers.length < 2) {
               const joinButton = document.createElement('button');
               joinButton.id = 'join-new-match';
+              joinButton.className = 'menu-button mt-2';
               joinButton.textContent = 'Join as Player';
               resultsDiv.querySelector('.search-result')?.appendChild(joinButton);
             }
@@ -119,7 +134,7 @@ export class MatchFinder {
             if (!currentMatch) return;
             resolve({
               gameId: currentMatch.gameId,
-              role: 'player2'
+              role: currentMatch.players[0] === playerName ? 'player1' : 'player2'
             });
         });
 
@@ -132,7 +147,5 @@ export class MatchFinder {
         });
       });
     });
-  }
-
-  
+  }  
 }

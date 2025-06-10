@@ -105,18 +105,17 @@ export class App {
     private async startOnlineGame(): Promise<void> {
         type MatchRole = 'player1' | 'player2' | 'spectator';
         return new Promise(async (resolve) => {
-        const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
-        const name = userData.username;
+            const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
+            const name = userData.username;
 
-        const matchFinder = new MatchFinder(this.container);
-        const matchInfo: { gameId: string | null, role: MatchRole } = await matchFinder.findMatch(name);
+            const matchFinder = new MatchFinder(this.container);
+            const matchInfo: { gameId: string | null, role: MatchRole } = await matchFinder.findMatch(name);
 
-        const manager = new GameManager(this.container, () => {
-            this.router.navigate('/');
-            resolve();
-        });
-
-        await manager.initOnline(name, matchInfo);
+            const manager = new GameManager(this.container, () => {
+                this.router.navigate('/');
+                resolve();
+            });
+            await manager.initOnline(name, matchInfo);
         });
     }
 
