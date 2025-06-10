@@ -26,20 +26,24 @@ export class GameManager {
       this.rootContainer.replaceChildren(this.wrapper);
     }
 
-  async init(name: string, isLocal: boolean) {
+  async initLocal(name: string) {
     try {
       const matchInfo = await checkPlayerMatch(name);
 
-      if (!matchInfo && isLocal) {
-        await this.setupGame(name, null, 'player1', isLocal);
-      } else if (matchInfo?.gameId && matchInfo.local && isLocal) {
-        await this.setupGame(name, matchInfo.gameId, 'player1', isLocal);
+      if (!matchInfo) {
+        await this.setupGame(name, null, 'player1', true);
+      } else if (matchInfo?.gameId && matchInfo.local) {
+        await this.setupGame(name, matchInfo.gameId, 'player1', true);
       }
     } catch (error) {
       if (error instanceof Error && error.message.includes('404')) {
         return;
       }
     }
+}
+
+async initOnline(name: string, matchInfo: {gameId: string | null, role: string}) {
+  await this.setupGame(name, matchInfo.gameId, matchInfo.role, false);
 }
  
   async toggleRenderer() {
