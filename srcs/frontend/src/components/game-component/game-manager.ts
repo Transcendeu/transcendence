@@ -387,6 +387,10 @@ async initOnline(name: string, matchInfo: {gameId: string | null, role: string})
       ? this.gameState?.player1 || 'Player 1' 
       : this.gameState?.player2 || 'Player 2';
 
+    const loserName = winner === 'player1'
+      ? this.gameState?.player2 || 'Player 2'
+      : this.gameState?.player1 || 'Player 1';
+
     let result;
     if (concession) {
       result = 'by forfeit!';
@@ -394,15 +398,36 @@ async initOnline(name: string, matchInfo: {gameId: string | null, role: string})
       result = `${scores.player1}-${scores.player2}`;
     }
     
-    this.gameEndScreen.innerHTML = `
-      <div class="end-screen-content flex flex-col items-center justify-center gap-6 p-8 text-center">
-        <h2 class="end-title text-5xl font-bold tracking-wide">VICTORY</h2>
-        <div class="winner-glow text-3xl font-bold text-neonCyan">
-          ${winnerName} wins<br><span class="text-neonMagenta">${result}</span>
-        </div>
-        <button id="continueBtn" class="continue-btn px-10 py-3 font-bold mt-4">Continue</button>
+this.gameEndScreen.innerHTML = `
+  <div class="flex items-center justify-center gap-10 p-8 w-full max-w-6xl">
+    
+    <!-- Winner Image with Name -->
+    <div class="relative flex-1 flex justify-center items-center">
+      <img src="/assets/winner.png" alt="Winner" class="max-h-80 object-contain drop-shadow-neonCyan" />
+      <div class="absolute top-4 text-white text-xl font-bold bg-black/60 px-4 py-1 rounded">
+        ${winnerName}
       </div>
-    `;
+    </div>
+
+    <!-- Center Content -->
+    <div class="end-screen-content flex flex-col items-center justify-center gap-6 text-center px-6 py-8 bg-black/60 rounded-2xl shadow-lg w-[30rem]">
+      <h2 class="end-title text-5xl font-bold tracking-wide">VICTORY</h2>
+      <div class="winner-glow text-3xl font-bold text-neonCyan">
+        ${winnerName} wins<br><span class="text-neonMagenta">${result}</span>
+      </div>
+      <button id="continueBtn" class="continue-btn px-10 py-3 font-bold mt-4">Continue</button>
+    </div>
+
+    <!-- Loser Image with Name -->
+    <div class="relative flex-1 flex justify-center items-center">
+      <img src="/assets/loser.png" alt="Loser" class="max-h-80 object-contain drop-shadow" />
+      <div class="absolute top-4 text-white text-xl font-bold bg-black/60 px-4 py-1 rounded">
+        ${loserName}
+      </div>
+    </div>
+    
+  </div>
+`;
 
     const continueBtn = this.gameEndScreen.querySelector('#continueBtn') as HTMLButtonElement;
     continueBtn.onclick = () => {
