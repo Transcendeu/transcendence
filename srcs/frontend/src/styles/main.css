@@ -533,26 +533,63 @@ button#forfeit.conceding {
 
 /* Game winner screen */
 .game-end-screen {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.8);
-  z-index: 100;
-  color: white;
+  @apply flex items-center justify-center;
+  background: radial-gradient(circle at center, rgba(255, 0, 128, 0.1) 0%, transparent 80%);
+  backdrop-filter: blur(4px);
+  animation: fadeIn 1s ease-out forwards;
 }
 
-.game-end-screen h2 {
-  color: #f8f8f8;
+.end-screen-content {
+  @apply bg-black bg-opacity-80 border-2 border-neonCyan rounded-lg shadow-[0_0_20px_#0ff];
+  animation: popIn 0.5s ease-out;
+  max-width: 500px;
+  width: 90%;
 }
 
-.game-end-screen .result {
-  color: #f0f0f0;
-  font-weight: bold;
+.end-title {
+  text-shadow: 0 0 10px #fff, 0 0 20px #0ff, 0 0 30px #0ff;
+  animation: glowPulse 2s ease-in-out infinite;
 }
-/* commented because it looks like a hallucination
-.hidden {
-  display: none !important;
+
+.winner-glow {
+  text-shadow: 0 0 8px #f0f, 0 0 16px #f0f;
 }
-*/
+
+.continue-btn {
+  @apply bg-neonCyan text-black uppercase border-2 border-white transition-all;
+  text-shadow: 0 0 6px #fff;
+  box-shadow: 0 0 15px #0ff;
+}
+
+.continue-btn:hover {
+  @apply bg-black text-neonCyan;
+  border-color: #0ff;
+  text-shadow: 0 0 8px #0ff;
+  box-shadow: 0 0 20px #0ff;
+}
+
+/* Animations */
+@keyframes popIn {
+  from {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes glowPulse {
+  0%, 100% {
+    text-shadow: 0 0 10px #fff, 0 0 20px #0ff, 0 0 30px #0ff;
+  }
+  50% {
+    text-shadow: 0 0 20px #fff, 0 0 30px #0ff, 0 0 50px #0ff;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

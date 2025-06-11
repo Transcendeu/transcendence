@@ -1,4 +1,4 @@
-export async function createGameSession(name: string, isLocal: boolean): Promise<string> {
+export async function createGameSession(name: string | null, isLocal: boolean): Promise<string> {
   const res = await fetch('/session', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

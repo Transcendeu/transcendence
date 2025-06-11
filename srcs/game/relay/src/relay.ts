@@ -113,20 +113,20 @@ function connectToEngine(gameId: string, isLocal: boolean) {
   });
 }
 
-
 // ✅ POST /session - Create a new session
 fastify.post('/session', async (req, reply) => {
   const body = await req.body as { name: string, isLocal: boolean };
 
-  if (!body?.name || typeof body.name !== 'string') {
+  if ((!body?.name || typeof body.name !== 'string') && !body.isLocal) {
     return reply.code(400).send({ error: 'Name is required' });
   }
 
-  // Look for an existing session with this player
-  for (const session of sessions.values()) {
-    for (const client of session.clients) {
-      if (client.name === body.name) {
-        return reply.send({ gameId: session.id });
+  if (body.name) {
+    for (const session of sessions.values()) {
+      for (const client of session.clients) {
+        if (client.name === body.name) {
+          return reply.send({ gameId: session.id });
+        }
       }
     }
   }
@@ -186,8 +186,6 @@ fastify.get<{Params: { gameId: string }}>('/ws/:gameId', { websocket: true }, (s
   let session = sessions.get(gameId);
 
   if (!session) {
-  //    connectToEngine(gameId, false);//here?
-  //    session = sessions.get(gameId)!;
     return socket.close(1008, 'Session not found'); // 1008 = policy violation
   }
 
@@ -208,45 +206,50 @@ fastify.get<{Params: { gameId: string }}>('/ws/:gameId', { websocket: true }, (s
       return;
     }
 
-    if (data.type === 'join' && typeof data.name === 'string') {
+    if (data.type === 'join') {
       client.name = data.name;
-      const requestedRole = ['player1', 'player2'].includes(data.role) ? data.role : 'spectator';
-      const rolesTaken = new Set(Array.from(session.clients).map(c => c.role));
 
-      const existing = Array.from(session.clients).find(c => c.name === client.name && c !== client);
-      if (existing) {
-        client.role = existing.role;
-      } else if (!rolesTaken.has(requestedRole)) {
+      for (const other of session.clients) {
+        if (other !== client && other.name === client.name && isConnectedClient(other)) {
+          console.warn(`[Duplicate] Disconnecting older socket for ${other.name}`);
+          other.socket.close(4000, 'Duplicate connection'); // optional custom close code
+          session.clients.delete(other);
+        }
+      }
+      const rolesTaken = new Set(Array.from(session.clients).map(c => c.role));
+  
+      const requestedRole = ['player1', 'player2'].includes(data.role) ? data.role : 'spectator';
+      if (!rolesTaken.has(requestedRole)) {
         client.role = requestedRole as 'player1' | 'player2' | 'spectator';
       } else {
         client.role = 'spectator';
       }
-      nameToSession.set(client.name!, session.id);
-      console.log(`[Join] ${client.name} assigned role: ${client.role}`);
+      if (client.name) {
+        nameToSession.set(client.name, session.id);
+        console.log(`[Join] ${client.name} assigned role: ${client.role}`);
+      }
 
       if (client.role === 'player1') session.player1Name = client.name;
       if (client.role === 'player2') session.player2Name = client.name;
 
-      if (bothPlayersConnected(session)) {
-//        console.log(`Both players connected for session ${session.id}. Sending 'players_ready' to engine.`);
+      if (bothPlayersConnected(session) || !session.player1Name) {
         session.engineSocket.write(JSON.stringify({ type: 'ready' }) + '\n');
       }
     }
 
 
-
   if (client.role === 'player1' || client.role === 'player2') {
-      if (data.type !== 'input') console.log(`[Relay] Forwarding to engine:(${data.type})`, msg.toString());//logging to implement
-      if (['input', 'ready', 'pause', 'resume', 'forfeit', 'space'].includes(data.type)) {
-        const inputPayload = {
-          player: client.name,
-          type: data.type,
-          role: session.localGame ? data.role : client.role,
-          input: normalizeInput(data.type, data.input),
-          state: data.state
-        };
-        session.engineSocket.write(JSON.stringify(inputPayload) + '\n');
-      }
+    if (data.type !== 'input') console.log(`[Relay] Forwarding to engine:(${data.type})`, msg.toString());//logging to implement
+    if (['input', 'ready', 'pause', 'resume', 'forfeit', 'space'].includes(data.type)) {
+      const inputPayload = {
+        player: client.name,
+        type: data.type,
+        role: session.localGame ? data.role : client.role,
+        input: normalizeInput(data.type, data.input),
+        state: data.state
+      };
+      session.engineSocket.write(JSON.stringify(inputPayload) + '\n');
+    }
   }
 
   });
@@ -258,25 +261,35 @@ fastify.get<{Params: { gameId: string }}>('/ws/:gameId', { websocket: true }, (s
 
     const session = sessions.get(gameId);
     if (!session || session.engineSocket.destroyed) return;
+    if (!session.player1Name) {
+      session?.engineSocket.end();
+      sessions.delete(gameId);
+      return;
+    }
 
-      if (client.role === 'player1' || client.role === 'player2') {
-        if (!bothPlayersConnected(session)) {
-          console.log(`Player disconnected from session ${session.id}. Sending 'pause' to engine.`);
-          session.engineSocket.write(JSON.stringify({ type: 'pause' }) + '\n');
-        }
+    if (client.name && client.role === 'spectator') {
+      console.log(`removing ${client.name} from spectating match ${gameId}`);
+      nameToSession.delete(client.name);
+    }
 
-        const activePlayers = [...session.clients].filter(c => 
-          isConnectedClient(c) && (c.role === 'player1' || c.role === 'player2'));
+    if (client.role === 'player1' || client.role === 'player2') {
+      if (!bothPlayersConnected(session)) {
+        console.log(`Player disconnected from session ${session.id}. Sending 'pause' to engine.`);
+        session.engineSocket.write(JSON.stringify({ type: 'pause' }) + '\n');
+      }
 
-        if (activePlayers.length === 0) {
-          console.log(`No players left in session ${session.id}, cleaning up spectators`);
-          for (const client of session.clients) {
-            if (isConnectedClient(client) && client.role === 'spectator') {
-              client.socket.close(1000, 'Game ended - no players remaining');
-            }
+      const activePlayers = [...session.clients].filter(c => 
+        isConnectedClient(c) && (c.role === 'player1' || c.role === 'player2'));
+
+      if (activePlayers.length === 0) {
+        console.log(`No players left in session ${session.id}, cleaning up spectators`);
+        for (const client of session.clients) {
+          if (isConnectedClient(client) && client.role === 'spectator') {
+            client.socket.close(1000, 'Game ended - no players remaining');
           }
         }
       }
+    }
 
     // If no active sockets are left in the session, start a cleanup timer
     if (![...session.clients].some(isConnectedClient)) {
@@ -285,13 +298,12 @@ fastify.get<{Params: { gameId: string }}>('/ws/:gameId', { websocket: true }, (s
           console.log(`Cleaning up empty session ${session.id}`);
           session.engineSocket.end();
           sessions.delete(session.id);
-          nameToSession.delete(session.player1Name!);
-          nameToSession.delete(session.player2Name!);
+          if (session.player1Name) nameToSession.delete(session.player1Name);
+          if (session.player2Name) nameToSession.delete(session.player2Name);
         }
       }, 30000);
     }
   });
-
 });
 
 // PATCH /session/:id/local-mode

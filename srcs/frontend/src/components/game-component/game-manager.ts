@@ -27,17 +27,21 @@ export class GameManager {
     }
 
   async initLocal(name: string) {
-    try {
-      const matchInfo = await checkPlayerMatch(name);
+    if (!name) {
+      await this.setupGame(null, null, 'player1', true);
+    } else {
+      try {
+        const matchInfo = await checkPlayerMatch(name);
 
-      if (!matchInfo) {
-        await this.setupGame(name, null, 'player1', true);
-      } else if (matchInfo?.gameId && matchInfo.local) {
-        await this.setupGame(name, matchInfo.gameId, 'player1', true);
-      }
-    } catch (error) {
-      if (error instanceof Error && error.message.includes('404')) {
-        return;
+        if (!matchInfo) {
+          await this.setupGame(name, null, 'player1', true);
+        } else if (matchInfo?.gameId && matchInfo.local) {
+          await this.setupGame(name, matchInfo.gameId, 'player1', true);
+        }
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('404')) {
+          return;
+        }
       }
     }
 }
@@ -95,7 +99,7 @@ async initOnline(name: string, matchInfo: {gameId: string | null, role: string})
     }
   }
 
-  async setupGame(playerName: string, gameId: string | null, role: string, localPlay: boolean) {
+  async setupGame(playerName: string | null, gameId: string | null, role: string, localPlay: boolean) {
       if (!this.currentRenderer) {
         this.currentRenderer = this.alternateRender ? new BabylonRenderer(this.wrapper) : new CanvasRenderer(this.wrapper);
         await this.currentRenderer.setup();
@@ -375,7 +379,7 @@ async initOnline(name: string, matchInfo: {gameId: string | null, role: string})
     // Create or update end screen
     if (!this.gameEndScreen) {
       this.gameEndScreen = document.createElement('div');
-      this.gameEndScreen.className = 'game-end-screen flex flex-col items-center justify-center gap-4 p-8 text-center';
+      this.gameEndScreen.className = 'game-end-screen absolute inset-0 z-50 bg-black/80 flex items-center justify-center';
       this.wrapper.appendChild(this.gameEndScreen);
     }
 
@@ -391,13 +395,13 @@ async initOnline(name: string, matchInfo: {gameId: string | null, role: string})
     }
     
     this.gameEndScreen.innerHTML = `
-      <h2 class="text-3xl font-bold">Match Ended</h2>
-      <div class="result text-2xl">
-        ${winnerName} wins ${result}
+      <div class="end-screen-content flex flex-col items-center justify-center gap-6 p-8 text-center">
+        <h2 class="end-title text-5xl font-bold tracking-wide">VICTORY</h2>
+        <div class="winner-glow text-3xl font-bold text-neonCyan">
+          ${winnerName} wins<br><span class="text-neonMagenta">${result}</span>
+        </div>
+        <button id="continueBtn" class="continue-btn px-10 py-3 font-bold mt-4">Continue</button>
       </div>
-      <button id="continueBtn" class="btn-control mt-8 px-8 py-2">
-        Continue
-      </button>
     `;
 
     const continueBtn = this.gameEndScreen.querySelector('#continueBtn') as HTMLButtonElement;

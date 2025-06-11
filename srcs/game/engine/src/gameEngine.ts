@@ -113,13 +113,11 @@ function handleGameConnection(gameId: string, socket: Socket) {
 
     rl.on('line', (line) => {
     if (!game) return;
-//console.log('received line', line);
+
     try {
       const event: GameEvent = JSON.parse(line);
-      //const { player, input, state, role, type } = JSON.parse(line);
       switch (event.type) {
           case 'input': {
-//            console.log(`Received input: player=${event.player}, input=${event.input}, role= ${event.role} state=${event.state} (${typeof event.state})`);
               if (event.role === 'player1' || event.role === 'player2') {
                 if (event.input === 'space') {
                   game.state.gameStatus = 'playing';
@@ -127,7 +125,6 @@ function handleGameConnection(gameId: string, socket: Socket) {
                   updateInputState(game.inputs, event.role, event.input, event.state);
                 }
               }
-//              console.log(`[${gameId}] ${role} ${player} -> ${input} (${state})`);
             }
             break;
           case 'ready':
@@ -327,19 +324,16 @@ function checkOutOfBoundsAndScore(state: GameState) {
 
 function checkGameEnd(state: GameState, scoringPlayer: 'player1' | 'player2') {
   const otherPlayer = scoringPlayer === 'player1' ? 'player2' : 'player1';
-  console.log("checking if ", scoringPlayer, " has score higher than ", state.maxScore);
-  // Check if scoring player has won
   if (state.scores[scoringPlayer] >= state.maxScore) {
     state.gameStatus = 'finished';
     state.winner = scoringPlayer;
     return;
   }
-  
-  // Check if other player can't possibly catch up
-  const pointsNeeded = state.maxScore - state.scores[otherPlayer];
+
   const pointsAhead = state.scores[scoringPlayer] - state.scores[otherPlayer];
-  
-  if (pointsAhead >= pointsNeeded) {
+  const pointsRemaining = state.maxScore - state.scores[scoringPlayer];
+
+  if (pointsAhead > pointsRemaining) {
     state.gameStatus = 'finished';
     state.winner = scoringPlayer;
   }
@@ -358,8 +352,6 @@ function resetBall(state: GameState, direction: 1 | -1) {
   };
 
   preventFlatAngles(state.ball);
-
-  console.log('ball after reset', state.ball);
 }
 
 
@@ -380,8 +372,6 @@ export function adjustBallSpeed(ball: BallState) {
   }
 
   preventFlatAngles(ball);
-
-  console.log('adjusted ball speed to ', ball.vx, ball.vy);
 }
 
 
@@ -457,7 +447,6 @@ function resumePressed(event: GameEvent, state: GameState, gameId: string) {
       game.inputs.player2.down = false;
     }
   }
-  console.log(`[${gameId}] ${event.role} ${event.player} -> pressed resume)`);
 }
 
 function playerConceded(event: GameEvent, state: GameState, gameId: string) {
