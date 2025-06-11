@@ -1,5 +1,5 @@
 import { Router } from '../router/Router';
-import { PongGame } from './PongGame';
+import { GameManager } from './game-component/game-manager';
 
 interface Player {
     name: string;
@@ -223,14 +223,15 @@ export class LocalTournament {
             }, 1000);
         });
 
-        // Start the game
-        new PongGame(gameContainer, () => {
-            // Update match results
-            const winner = 1; // Default to player 1 for now
+       const manager = new GameManager(gameContainer, (result) => {
+            // Extract winner from the result object
+            const winner = result!.matchWinner === 'player1' ? 1 : 2;
             const winningPlayer = winner === 1 ? match.player1 : match.player2;
             const losingPlayer = winner === 1 ? match.player2 : match.player1;
             
+            // Update match results with full game data
             match.winner = winningPlayer;
+            //match.score = result.finalScore; // Store full score object
             winningPlayer.wins++;
             losingPlayer.losses++;
 
@@ -239,7 +240,7 @@ export class LocalTournament {
             if (roundMatches.every(m => m.winner)) {
                 this.currentRound++;
                 
-                // Create next round matches
+                // Create next round matches using winners
                 const winners = roundMatches.map(m => m.winner!);
                 for (let i = 0; i < winners.length; i += 2) {
                     if (winners[i + 1]) {
@@ -254,13 +255,14 @@ export class LocalTournament {
 
             this.currentMatch++;
 
-            // Check if tournament is complete
+            // Check tournament completion
             if (this.currentMatch === this.matches.length) {
                 this.showTournamentResults();
             } else {
                 this.showTournamentBracket();
             }
         });
+        await manager.initLocal('', match.player1.name, match.player2.name);
     }
 
     private showTournamentResults(): void {

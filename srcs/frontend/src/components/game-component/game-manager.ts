@@ -1,6 +1,6 @@
 import { CanvasRenderer } from './renderer/canvas-renderer';
 import { BabylonRenderer } from './renderer/babylon-renderer';
-import { GameRenderer, PaddleState, BallState } from './renderer/interfaces';
+import { GameRenderer, PaddleState, BallState, MatchResult } from './renderer/interfaces';
 import { createGameSession, checkPlayerMatch } from './relay-api';
 import { KeyBindings } from './constants/keys';
 
@@ -8,6 +8,8 @@ export class GameManager {
   private currentRenderer: GameRenderer | null = null;
   private alternateRender = false;
   private activeSocket: WebSocket | null = null;
+  private player1DisplayName: string | undefined;
+  private player2DisplayName: string | undefined;
   private gameState: {
     player1: '';
     player2: '';
@@ -21,13 +23,15 @@ export class GameManager {
   
   constructor(
       private rootContainer: HTMLElement,
-      private onGameEnd?: () => void) {
+      private onGameEnd?: (result?: MatchResult) => void) {
       this.wrapper = this.createGameContainer();
       this.rootContainer.replaceChildren(this.wrapper);
     }
 
-  async initLocal(name: string) {
+  async initLocal(name: string, player1DisplayName?: string, player2DisplayName?: string) {
     if (!name) {
+      this.player1DisplayName = player1DisplayName;
+      this.player2DisplayName = player2DisplayName;
       await this.setupGame(null, null, 'player1', true);
     } else {
       try {
@@ -234,8 +238,10 @@ async initOnline(name: string, matchInfo: {gameId: string | null, role: string})
       const nameP1 = document.getElementById('name-player1');
       const nameP2 = document.getElementById('name-player2');
       if (nameP1 && nameP2 && data.playerNames) {
-        nameP1.textContent = data.playerNames.player1 || 'Waiting...';
-        nameP2.textContent = data.playerNames.player2 || 'Waiting...';
+        const displayp1 = this.player1DisplayName || data.playerNames.player1;
+        const displayp2 = this.player2DisplayName || data.playerNames.player2;
+        nameP1.textContent = displayp1 || 'Waiting...';
+        nameP2.textContent = displayp2 || 'Waiting...';
       }
 
       const matchControl = document.getElementById('matchControl') as HTMLButtonElement;
@@ -340,7 +346,6 @@ async initOnline(name: string, matchInfo: {gameId: string | null, role: string})
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
 
-    // Clean up when window loses focus
     const handleBlur = () => {
       for (const role of ['player1', 'player2'] as const) {
         for (const key of ['up', 'down'] as const) {
@@ -384,12 +389,12 @@ async initOnline(name: string, matchInfo: {gameId: string | null, role: string})
     }
 
     const winnerName = winner === 'player1' 
-      ? this.gameState?.player1 || 'Player 1' 
-      : this.gameState?.player2 || 'Player 2';
+      ? this.player1DisplayName || this.gameState?.player1
+      : this.player2DisplayName || this.gameState?.player2;
 
     const loserName = winner === 'player1'
-      ? this.gameState?.player2 || 'Player 2'
-      : this.gameState?.player1 || 'Player 1';
+      ? this.player2DisplayName || this.gameState?.player2
+      : this.player1DisplayName || this.gameState?.player1;
 
     let result;
     if (concession) {
@@ -431,8 +436,8 @@ this.gameEndScreen.innerHTML = `
 
     const continueBtn = this.gameEndScreen.querySelector('#continueBtn') as HTMLButtonElement;
     continueBtn.onclick = () => {
-      this.cleanup(); // Now using the unified cleanup
-      this.onGameEnd?.(); // Call the callback after cleanup
+      this.cleanup();
+      this.onGameEnd?.({matchWinner: winner, finalScore: scores, forfeit: concession, playerNames: { player1: this.gameState?.player1, player2: this.gameState?.player2}});
     };
   }
 

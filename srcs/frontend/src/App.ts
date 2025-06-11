@@ -92,8 +92,9 @@ export class App {
     private async startLocalGame(): Promise<void> {
         return new Promise(async (resolve) => {
             const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
-            const name = userData.username || undefined;
-            const manager = new GameManager(this.container, () => {
+            const name = userData.username ?? '';
+            const manager = new GameManager(this.container, (result) => {
+                console.log("match result: ", result);
                 this.router.navigate('/');
                 resolve();
             });
