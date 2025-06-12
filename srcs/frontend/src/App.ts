@@ -93,12 +93,11 @@ export class App {
         return new Promise(async (resolve) => {
             const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
             const name = userData.username ?? '';
-            const manager = new GameManager(this.container, (result) => {
-                console.log("match result: ", result);
+            let manager: GameManager | null = new GameManager(this.container, () => {
                 this.router.navigate('/');
                 resolve();
+                manager = null;
             });
-
             await manager.initLocal(name);
         });
     }
@@ -112,9 +111,10 @@ export class App {
             const matchFinder = new MatchFinder(this.container);
             const matchInfo: { gameId: string | null, role: MatchRole } = await matchFinder.findMatch(name);
 
-            const manager = new GameManager(this.container, () => {
+            let manager: GameManager | null = new GameManager(this.container, () => {
                 this.router.navigate('/');
                 resolve();
+                manager = null;
             });
             await manager.initOnline(name, matchInfo);
         });

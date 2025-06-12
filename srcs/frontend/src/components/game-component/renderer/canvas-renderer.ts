@@ -30,8 +30,8 @@ export class CanvasRenderer implements GameRenderer {
 
     this.resize();
 
-    this.resizeObserver?.observe(wrapper!);
     this.resizeObserver = new ResizeObserver(() => this.resize());
+    this.resizeObserver.observe(wrapper!);
 }
 
   drawGameState(paddles: PaddleState, ball: BallState, gameStatus: string) {

@@ -8,8 +8,10 @@ export class GameManager {
   private currentRenderer: GameRenderer | null = null;
   private alternateRender = false;
   private activeSocket: WebSocket | null = null;
+  private inputHandlerCleanup: (() => void) | null = null;
   private player1DisplayName: string | undefined;
   private player2DisplayName: string | undefined;
+  private localGame: boolean;
   private gameState: {
     player1: '';
     player2: '';
@@ -26,9 +28,11 @@ export class GameManager {
       private onGameEnd?: (result?: MatchResult) => void) {
       this.wrapper = this.createGameContainer();
       this.rootContainer.replaceChildren(this.wrapper);
+      this.localGame = false;
     }
 
   async initLocal(name: string, player1DisplayName?: string, player2DisplayName?: string) {
+    this.localGame = true;
     if (!name) {
       this.player1DisplayName = player1DisplayName;
       this.player2DisplayName = player2DisplayName;
@@ -51,9 +55,10 @@ export class GameManager {
 }
 
 async initOnline(name: string, matchInfo: {gameId: string | null, role: string}) {
+  this.localGame = false;
   await this.setupGame(name, matchInfo.gameId, matchInfo.role, false);
 }
- 
+
   async toggleRenderer() {
     if (!this.activeSocket) return;
    
@@ -91,8 +96,11 @@ async initOnline(name: string, matchInfo: {gameId: string | null, role: string})
       this.currentRenderer = null;
     }
     if (this.activeSocket) {
-      this.activeSocket.close();
-      this.activeSocket = null;
+        this.activeSocket.onopen = null;
+        this.activeSocket.onmessage = null;
+        this.activeSocket.onclose = null;
+        this.activeSocket.close();
+        this.activeSocket = null;
     }
     if (this.wrapper && this.wrapper.parentNode) {
       this.wrapper.parentNode.removeChild(this.wrapper);
@@ -101,6 +109,14 @@ async initOnline(name: string, matchInfo: {gameId: string | null, role: string})
       this.gameEndScreen.remove();
       this.gameEndScreen = null;
     }
+    if (this.inputHandlerCleanup) {
+      this.inputHandlerCleanup();
+      this.inputHandlerCleanup = null;
+    }
+
+    this.gameState = null;
+    this.player1DisplayName = undefined;
+    this.player2DisplayName = undefined;
   }
 
   async setupGame(playerName: string | null, gameId: string | null, role: string, localPlay: boolean) {
@@ -127,7 +143,7 @@ async initOnline(name: string, matchInfo: {gameId: string | null, role: string})
         this.activeSocket?.send(JSON.stringify({ type: 'join', name: playerName, role }));
         this.currentRenderer?.setBackground();
         this.currentRenderer?.showGameControls();
-        this.setupInputHandlers(this.activeSocket!, localPlay);
+        this.inputHandlerCleanup = this.setupInputHandlers(this.activeSocket!, localPlay);
       };
 
       this.activeSocket.onmessage = (event) => {
@@ -266,11 +282,24 @@ async initOnline(name: string, matchInfo: {gameId: string | null, role: string})
           default:
             matchControl.disabled = true;
         }
+        if (this.localGame) {
+          matchControl.disabled = true;
+          matchControl.classList.add('hidden');
+        }
         if (matchControl.disabled) {
             matchControl.classList.remove('btn-start');
         } else {
             matchControl.classList.add('btn-start');
+            matchControl.classList.remove('hidden');
         }
+      }
+      const forfeitButton = document.getElementById('forfeit') as HTMLButtonElement;
+      if (this.localGame) {
+        forfeitButton.disabled = true;
+        forfeitButton.classList.add('hidden');
+      } else {
+        forfeitButton.disabled = false;
+        forfeitButton.classList.remove('hidden');
       }
     }
 
@@ -449,8 +478,7 @@ this.gameEndScreen.innerHTML = `
 
     const inner = document.createElement('div');
     inner.className = 'flex flex-col items-center gap-4 w-[64vw] p-4 bg-black text-white rounded flex-grow';
-
-  
+ 
     inner.innerHTML = `
       <!-- HUD -->
       <div class="flex flex-col items-center gap-2 w-full">
@@ -492,5 +520,4 @@ this.gameEndScreen.innerHTML = `
     wrapper.appendChild(inner);
     return wrapper;
   }
-  
 }

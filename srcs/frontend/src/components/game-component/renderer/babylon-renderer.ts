@@ -85,7 +85,7 @@ export class BabylonRenderer implements GameRenderer {
     this.resize();
 
     this.resizeObserver = new ResizeObserver(() => this.resize());
-    if (wrapper) this.resizeObserver.observe(wrapper);
+    this.resizeObserver.observe(wrapper!);
   }
 
   private zoom = 0.9;

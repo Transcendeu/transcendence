@@ -62,7 +62,7 @@ function connectToEngine(gameId: string, isLocal: boolean) {
             if (isConnectedClient(client)) {
               client.socket.send(JSON.stringify(obj));
               setTimeout(() => {
-                client.socket.close(1000, 'Game ended'); // Normal closure
+                client.socket.close(1000, 'Game ended');
               }, 100);
             }
           }
@@ -73,28 +73,19 @@ function connectToEngine(gameId: string, isLocal: boolean) {
             nameToSession.delete(session.player1Name!);
             nameToSession.delete(session.player2Name!);
           }, 500);
-          continue; // Skip normal processing
+          continue;
+        }
+
+        if (obj.type === 'state') {
+          obj.playerNames = {
+            player1: session.localGame ? 'Player 1' : session.player1Name ?? '',
+            player2: session.localGame ? 'Player 2' : session.player2Name ?? ''
+          };
         }
 
         for (const client of session.clients) {
-          if (obj.type === 'state') {
-            if (isLocal) {
-              obj.playerNames = {
-                player1: 'Player 1',
-                player2: 'Player 2'
-              };
-            } else {
-              obj.playerNames = {
-                player1: session.player1Name ?? '',
-                player2: session.player2Name ?? ''
-              };
-            }
-          }
-
-          for (const client of session.clients) {
-            if (isConnectedClient(client)) {
-              client.socket.send(JSON.stringify(obj));
-            }
+          if (isConnectedClient(client)) {
+            client.socket.send(JSON.stringify(obj));
           }
         }
       } catch {
@@ -124,7 +115,7 @@ fastify.post('/session', async (req, reply) => {
   if (body.name) {
     for (const session of sessions.values()) {
       for (const client of session.clients) {
-        if (client.name === body.name) {
+        if (client.name === body.name && !session.localGame) {
           return reply.send({ gameId: session.id });
         }
       }
@@ -143,6 +134,10 @@ fastify.get<{ Params: { name: string } }>('/session/by-name/:name', async (req, 
 
   const session = sessions.get(gameId)!;
   
+  if (session.localGame) {
+    return reply.code(422).send({ error: 'Session unacessible - local game' });
+  }
+
   const players = [];
   let isSpectator = false;
   
@@ -261,7 +256,7 @@ fastify.get<{Params: { gameId: string }}>('/ws/:gameId', { websocket: true }, (s
 
     const session = sessions.get(gameId);
     if (!session || session.engineSocket.destroyed) return;
-    if (!session.player1Name) {
+    if (!session.player1Name || (session.localGame && client.role !== 'spectator')) {
       session?.engineSocket.end();
       sessions.delete(gameId);
       return;

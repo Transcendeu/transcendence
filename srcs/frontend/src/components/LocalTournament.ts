@@ -207,19 +207,25 @@ export class LocalTournament {
             <p>Round ${match.round}</p>
             <div class="countdown">Starting in: <span id="countdown">3</span></div>
         `;
-        this.container.insertBefore(announcementDiv, gameContainer);
+        //this.container.insertBefore(announcementDiv, gameContainer);
+        document.body.appendChild(announcementDiv); // Attach to body instead
 
         // Countdown
-        await new Promise<void>(resolve => {
+         await new Promise<void>(resolve => {
             let count = 3;
             const countdownSpan = document.getElementById('countdown');
             const interval = setInterval(() => {
-                count--;
-                if (countdownSpan) countdownSpan.textContent = count.toString();
-                if (count === 0) {
-                    clearInterval(interval);
-                    resolve();
-                }
+            count--;
+            if (countdownSpan) countdownSpan.textContent = count.toString();
+            if (count === 0) {
+                clearInterval(interval);
+                // Smooth fade out before removal
+                announcementDiv.classList.add('fade-out');
+                setTimeout(() => {
+                announcementDiv.remove();
+                resolve();
+                }, 300); // Match the animation duration
+            }
             }, 1000);
         });
 
