@@ -207,31 +207,42 @@ fastify.get<{Params: { gameId: string }}>('/ws/:gameId', { websocket: true }, (s
       for (const other of session.clients) {
         if (other !== client && other.name === client.name && isConnectedClient(other)) {
           console.warn(`[Duplicate] Disconnecting older socket for ${other.name}`);
-          other.socket.close(4000, 'Duplicate connection'); // optional custom close code
+          other.socket.close(4000, 'Duplicate connection');
           session.clients.delete(other);
         }
       }
-      const rolesTaken = new Set(Array.from(session.clients).map(c => c.role));
-  
-      const requestedRole = ['player1', 'player2'].includes(data.role) ? data.role : 'spectator';
-      if (!rolesTaken.has(requestedRole)) {
-        client.role = requestedRole as 'player1' | 'player2' | 'spectator';
-      } else {
-        client.role = 'spectator';
+
+      const requestedRole = data.role as 'player1' | 'player2' | 'spectator';
+      let assignedRole: typeof requestedRole = 'spectator';
+
+      if (requestedRole === 'spectator') {
+        assignedRole = 'spectator';
+      } else if (requestedRole === 'player1') {
+        if (session.player1Name === client.name || !session.player1Name) {
+          session.player1Name = client.name;
+          assignedRole = 'player1';
+        } else {
+          assignedRole = 'spectator'; // fallback
+        }
+      } else if (requestedRole === 'player2') {
+        if (session.player2Name === client.name || !session.player2Name) {
+          session.player2Name = client.name;
+          assignedRole = 'player2';
+        } else {
+          assignedRole = 'spectator'; // fallback
+        }
       }
+      client.role = assignedRole;
       if (client.name) {
         nameToSession.set(client.name, session.id);
-        console.log(`[Join] ${client.name} assigned role: ${client.role}`);
+        session.clients.add(client);
       }
+      console.log(`[Join] ${client.name} assigned role: ${client.role}`);
 
-      if (client.role === 'player1') session.player1Name = client.name;
-      if (client.role === 'player2') session.player2Name = client.name;
-
-      if (bothPlayersConnected(session) || !session.player1Name) {
+      if (session.player1Name && session.player2Name) {
         session.engineSocket.write(JSON.stringify({ type: 'ready' }) + '\n');
       }
     }
-
 
   if (client.role === 'player1' || client.role === 'player2') {
     if (data.type !== 'input') console.log(`[Relay] Forwarding to engine:(${data.type})`, msg.toString());//logging to implement

@@ -55,7 +55,7 @@ export class GameManager {
 }
 
 async initOnline(name: string, matchInfo: {gameId: string | null, role: string}) {
-  this.localGame = false;
+  this.localGame = matchInfo.role === 'spectator' ? true : false;
   await this.setupGame(name, matchInfo.gameId, matchInfo.role, false);
 }
 
@@ -174,7 +174,6 @@ async initOnline(name: string, matchInfo: {gameId: string | null, role: string})
       };
 
       this.activeSocket.onerror = (err) => console.error('WebSocket error', err);
-
 
       const toggleBtn = document.getElementById('toggleRenderer') as HTMLButtonElement;
       toggleBtn.textContent = this.alternateRender ? '2D' : '3D';
@@ -469,7 +468,6 @@ this.gameEndScreen.innerHTML = `
       this.onGameEnd?.({matchWinner: winner, finalScore: scores, forfeit: concession, playerNames: { player1: this.gameState?.player1, player2: this.gameState?.player2}});
     };
   }
-
 
   private createGameContainer(): HTMLDivElement {
     const wrapper = document.createElement('div');
