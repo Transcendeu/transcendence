@@ -11,7 +11,7 @@ export class GameManager {
   private inputHandlerCleanup: (() => void) | null = null;
   private player1DisplayName: string | undefined;
   private player2DisplayName: string | undefined;
-  private localGame: boolean;
+  private hideGui: boolean;
   private gameState: {
     player1: '';
     player2: '';
@@ -28,11 +28,11 @@ export class GameManager {
       private onGameEnd?: (result?: MatchResult) => void) {
       this.wrapper = this.createGameContainer();
       this.rootContainer.replaceChildren(this.wrapper);
-      this.localGame = false;
+      this.hideGui = false;
     }
 
   async initLocal(name: string, player1DisplayName?: string, player2DisplayName?: string) {
-    this.localGame = true;
+    this.hideGui = true;
     if (!name) {
       this.player1DisplayName = player1DisplayName;
       this.player2DisplayName = player2DisplayName;
@@ -55,7 +55,7 @@ export class GameManager {
 }
 
 async initOnline(name: string, matchInfo: {gameId: string | null, role: string}) {
-  this.localGame = matchInfo.role === 'spectator' ? true : false;
+  this.hideGui = matchInfo.role === 'spectator' ? true : false;
   await this.setupGame(name, matchInfo.gameId, matchInfo.role, false);
 }
 
@@ -281,7 +281,7 @@ async initOnline(name: string, matchInfo: {gameId: string | null, role: string})
           default:
             matchControl.disabled = true;
         }
-        if (this.localGame) {
+        if (this.hideGui) {
           matchControl.disabled = true;
           matchControl.classList.add('hidden');
         }
@@ -293,7 +293,7 @@ async initOnline(name: string, matchInfo: {gameId: string | null, role: string})
         }
       }
       const forfeitButton = document.getElementById('forfeit') as HTMLButtonElement;
-      if (this.localGame) {
+      if (this.hideGui) {
         forfeitButton.disabled = true;
         forfeitButton.classList.add('hidden');
       } else {

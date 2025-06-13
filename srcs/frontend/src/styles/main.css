@@ -264,12 +264,6 @@ button#forfeit.conceding {
   animation: glitch 2s infinite;
 }
 
-.error-message {
-  @apply text-[1.2rem] text-neonCyan mb-8;
-  text-shadow: 0 0 8px #0ff;
-}
-
-
 /* Authentication styles */
 .auth-container {
   @apply flex justify-center items-center min-h-screen;
@@ -838,4 +832,34 @@ button#forfeit.conceding {
   .tournament-controls {
     @apply flex-col;
   }
+}
+
+/* Error message styles
+.error-message {
+  @apply text-[1.2rem] text-neonCyan mb-8;
+  text-shadow: 0 0 8px #0ff;
+}*/
+.error-message {
+    @apply text-neonMagenta text-xs h-4 mt-1 overflow-hidden transition-all duration-300;
+    text-shadow: 0 0 4px #f0f;
+    max-height: 0;
+    opacity: 0;
+}
+
+.error-message.error-visible {
+    @apply max-h-4 opacity-100;
+}
+
+.input-error {
+    border-color: #f00 !important;
+    box-shadow: 0 0 8px rgba(255, 0, 0, 0.4) !important;
+    animation: errorPulse 0.5s ease-in-out;
+}
+
+@keyframes errorPulse {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-2px); }
+    40% { transform: translateX(2px); }
+    60% { transform: translateX(-2px); }
+    80% { transform: translateX(2px); }
 }

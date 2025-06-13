@@ -1,6 +1,37 @@
 import net, { Socket } from 'net';
 import { createInterface } from 'readline';
 
+const GameConstants = {
+  BALL: {
+    INITIAL_BASE_SPEED: 0.0005,  // Starting speed for new games/resets
+    SPEED_INCREASE_FACTOR: 1.15,   // Multiplier per collision
+    MAX_SPEED: 0.003,              // Absolute maximum speed
+    PRESERVATION_RATIO: 0.42,      // Speed retention between rounds
+    MAX_COLLISION_BOOST: 3.0,     // Max speed multiplier from collisions
+    MIN_ANGLE: 15 * (Math.PI / 180),
+    PADDLE_REBOUND_FACTOR: 0.0005,
+    RADIUS: 0.008
+  },
+  
+  PADDLE: {
+    SPEED: 0.0015,
+    WIDTH: 0.011,
+    HEIGHT: 0.2,
+    PLAYER1_X: 0.05,
+    PLAYER2_X: 0.94,
+    DEFAULT_Y: 0.4
+  },
+
+  RULES: {
+    DEFAULT_MAX_SCORE: 11,
+    INPUT_TIMEOUT_MS: 100  // How long inputs stay active without updates
+  },
+  
+  LOOP: {
+    FPS: 60,
+    MAX_FRAME_TIME_MS: 16  // Clamp delta time to ~60fps
+  }
+};
 
 interface PaddleState {
   x: number;       // normalized 0..1 horizontal position
@@ -10,11 +41,12 @@ interface PaddleState {
 }
 
 interface BallState {
-  x: number;       // normalized position 0..1 horizontal
-  y: number;       // normalized position 0..1 vertical
-  vx: number;      // velocity horizontal (normalized units/frame or per tick)
-  vy: number;      // velocity vertical
-  radius: number;  // normalized radius
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  radius: number;
+  collisionCount: number;  // Add this to track collisions
 }
 
 interface InputStates {
@@ -187,13 +219,24 @@ function getInitialGameState(scoreP1: number, scoreP2: number, maxScore?: number
     ball: {
       x: 0.5,
       y: 0.5,
-      vx: 0.00025,
-      vy: 0.0002,
-      radius: 0.008
+      vx: GameConstants.BALL.INITIAL_BASE_SPEED,
+      vy: GameConstants.BALL.INITIAL_BASE_SPEED * 0.08,
+      radius: GameConstants.BALL.RADIUS,
+      collisionCount: 0
     },
     paddles: {
-      player1: { x: 0.05, y: 0.4, width: 0.011, height: 0.2 },
-      player2: { x: 0.94, y: 0.4, width: 0.011, height: 0.2 },
+      player1: { 
+        x: GameConstants.PADDLE.PLAYER1_X, 
+        y: GameConstants.PADDLE.DEFAULT_Y, 
+        width: GameConstants.PADDLE.WIDTH, 
+        height: GameConstants.PADDLE.HEIGHT 
+      },
+      player2: { 
+        x: GameConstants.PADDLE.PLAYER2_X, 
+        y: GameConstants.PADDLE.DEFAULT_Y, 
+        width: GameConstants.PADDLE.WIDTH, 
+        height: GameConstants.PADDLE.HEIGHT 
+      },
     },
     scores: { player1: scoreP1, player2: scoreP2 },
     gameStatus: 'waiting',
@@ -202,13 +245,13 @@ function getInitialGameState(scoreP1: number, scoreP2: number, maxScore?: number
   };
 }
 
-// Update the paddle movement logic
 function updatePaddles(state: GameState, inputs: InputStates, deltaTimeMs: number) {
-  const speed = 0.0015 * deltaTimeMs;
+  const speed = GameConstants.PADDLE.SPEED * deltaTimeMs;
   const now = Date.now();
+  const inputTimeout = GameConstants.RULES.INPUT_TIMEOUT_MS;
 
-  // Player 1 movement - added input timeout check (same as player2)
-  const player1InputFresh = (now - inputs.player1.lastUpdate) < 100; // 100ms timeout
+  // Player 1 movement
+  const player1InputFresh = (now - inputs.player1.lastUpdate) < inputTimeout;
   if (player1InputFresh) {
     if (inputs.player1.up && !inputs.player1.down) {
       state.paddles.player1.y = Math.max(0, state.paddles.player1.y - speed);
@@ -217,13 +260,12 @@ function updatePaddles(state: GameState, inputs: InputStates, deltaTimeMs: numbe
       state.paddles.player1.y = Math.min(1 - state.paddles.player1.height, state.paddles.player1.y + speed);
     }
   } else {
-    // Reset inputs if they're too old
     inputs.player1.up = false;
     inputs.player1.down = false;
   }
 
-  // Player 2 movement (unchanged)
-  const player2InputFresh = (now - inputs.player2.lastUpdate) < 100;
+  // Player 2 movement
+  const player2InputFresh = (now - inputs.player2.lastUpdate) < inputTimeout;
   if (player2InputFresh) {
     if (inputs.player2.up && !inputs.player2.down) {
       state.paddles.player2.y = Math.max(0, state.paddles.player2.y - speed);
@@ -238,22 +280,21 @@ function updatePaddles(state: GameState, inputs: InputStates, deltaTimeMs: numbe
 }
 
 function updateBall(state: GameState, deltaTimeMs: number) {
+  deltaTimeMs = Math.min(deltaTimeMs, GameConstants.LOOP.MAX_FRAME_TIME_MS);
   if (state.gameStatus !== 'playing') return;
 
   const ball = state.ball;
-
-  // Apply velocity to position
   ball.x += ball.vx * deltaTimeMs;
   ball.y += ball.vy * deltaTimeMs;
 
-  // Bounce off top and bottom walls with proper boundary checking
+  // Wall collisions
   if (ball.y - ball.radius <= 0) {
-    ball.y = ball.radius; // Ensure ball doesn't get stuck in wall
-    ball.vy = Math.abs(ball.vy); // Bounce down
+    ball.y = ball.radius;
+    ball.vy = Math.abs(ball.vy);
     preventFlatAngles(ball);
   } else if (ball.y + ball.radius >= 1) {
-    ball.y = 1 - ball.radius; // Ensure ball doesn't get stuck in wall
-    ball.vy = -Math.abs(ball.vy); // Bounce up
+    ball.y = 1 - ball.radius;
+    ball.vy = -Math.abs(ball.vy);
     preventFlatAngles(ball);
   }
 
@@ -264,10 +305,16 @@ function updateBall(state: GameState, deltaTimeMs: number) {
 function handlePaddleCollision(state: GameState) {
   const { ball, paddles } = state;
   const epsilon = 0.001;
-  const addedVelocity = 0.0015;
 
-  // Don't process paddle collisions if ball is already off-screen
   if (ball.x < 0 || ball.x > 1) return;
+
+  const handleCollision = (paddle: PaddleState, direction: number) => {
+    const hitPos = (ball.y - (paddle.y + paddle.height / 2)) / paddle.height;
+    ball.vx = Math.abs(ball.vx) * direction;
+    ball.vy += hitPos * GameConstants.BALL.PADDLE_REBOUND_FACTOR;
+    ball.x = paddle.x + (direction > 0 ? paddle.width + ball.radius : -ball.radius) + (epsilon * direction);
+    adjustBallSpeed(ball);
+  };
 
   // Left paddle collision
   if (
@@ -276,14 +323,7 @@ function handlePaddleCollision(state: GameState) {
     ball.y + ball.radius >= paddles.player1.y &&
     ball.y - ball.radius <= paddles.player1.y + paddles.player1.height
   ) {
-    // Calculate relative impact point (-0.5 to 0.5 from center)
-    const hitPos = (ball.y - (paddles.player1.y + paddles.player1.height / 2)) / paddles.player1.height;
-    
-    ball.vx = Math.abs(ball.vx); // Ensure ball moves right
-    ball.vy += hitPos * addedVelocity; // Add some vertical velocity based on hit position
-    
-    ball.x = paddles.player1.x + paddles.player1.width + ball.radius + epsilon;
-    adjustBallSpeed(ball);
+    handleCollision(paddles.player1, 1);
   }
 
   // Right paddle collision
@@ -293,14 +333,7 @@ function handlePaddleCollision(state: GameState) {
     ball.y + ball.radius >= paddles.player2.y &&
     ball.y - ball.radius <= paddles.player2.y + paddles.player2.height
   ) {
-    // Calculate relative impact point (-0.5 to 0.5 from center)
-    const hitPos = (ball.y - (paddles.player2.y + paddles.player2.height / 2)) / paddles.player2.height;
-    
-    ball.vx = -Math.abs(ball.vx); // Ensure ball moves left
-    ball.vy += hitPos * addedVelocity; // Add some vertical velocity based on hit position
-    
-    ball.x = paddles.player2.x - ball.radius - epsilon;
-    adjustBallSpeed(ball);
+    handleCollision(paddles.player2, -1);
   }
 }
 
@@ -340,58 +373,60 @@ function checkGameEnd(state: GameState, scoringPlayer: 'player1' | 'player2') {
 }
 
 function resetBall(state: GameState, direction: 1 | -1) {
-  const baseSpeed = 0.00025; // Slower initial speed
-  const angle = (Math.random() * (Math.PI / 3)) - (Math.PI / 6); // ±30 degrees
+  const preservedCollisions = Math.floor(state.ball.collisionCount * GameConstants.BALL.PRESERVATION_RATIO);
+  const angle = (Math.random() * (Math.PI / 3)) - (Math.PI / 6);
+  const speedMultiplier = Math.min(
+    Math.pow(GameConstants.BALL.SPEED_INCREASE_FACTOR, preservedCollisions),
+    GameConstants.BALL.MAX_COLLISION_BOOST
+  );
+  const speed = GameConstants.BALL.INITIAL_BASE_SPEED * 
+  Math.min(
+    Math.pow(GameConstants.BALL.SPEED_INCREASE_FACTOR, preservedCollisions),
+    GameConstants.BALL.MAX_COLLISION_BOOST
+  );
 
   state.ball = {
     x: 0.5,
     y: 0.5,
-    radius: 0.008,
-    vx: baseSpeed * Math.cos(angle) * direction,
-    vy: baseSpeed * Math.sin(angle),
+    radius: GameConstants.BALL.RADIUS,
+    vx: speed * Math.cos(angle) * direction,
+    vy: speed * Math.sin(angle),
+    collisionCount: preservedCollisions
   };
 
   preventFlatAngles(state.ball);
 }
 
-
-export function adjustBallSpeed(ball: BallState) {
-  const SPEED_INCREASE = 1.02;
-  const MAX_SPEED = 0.03;
-
-  // Increase speed
-  ball.vx *= SPEED_INCREASE;
-  ball.vy *= SPEED_INCREASE;
-
-  // Clamp max speed
-  const speed = Math.sqrt(ball.vx ** 2 + ball.vy ** 2);
-  if (speed > MAX_SPEED) {
-    const scale = MAX_SPEED / speed;
-    ball.vx *= scale;
-    ball.vy *= scale;
+function adjustBallSpeed(ball: BallState) {
+  ball.collisionCount++;
+  const currentSpeed = Math.sqrt(ball.vx ** 2 + ball.vy ** 2);
+  const direction = Math.atan2(ball.vy, ball.vx);
+  const newSpeed = Math.min(
+    GameConstants.BALL.INITIAL_BASE_SPEED * 
+      Math.pow(GameConstants.BALL.SPEED_INCREASE_FACTOR, ball.collisionCount),
+    GameConstants.BALL.MAX_SPEED
+  );
+  if (newSpeed > currentSpeed) {
+    ball.vx = newSpeed * Math.cos(direction);
+    ball.vy = newSpeed * Math.sin(direction);
   }
-
   preventFlatAngles(ball);
 }
 
-
 function preventFlatAngles(ball: BallState) {
-  const minAngle = 15 * (Math.PI / 180); // 15 degrees in radians
   const speed = Math.sqrt(ball.vx ** 2 + ball.vy ** 2);
   const angle = Math.atan2(ball.vy, ball.vx);
-  // clamp angle away from horizontal near 0 or PI
-  if (Math.abs(angle) < minAngle) {
-    const newAngle = angle < 0 ? -minAngle : minAngle;
+  
+  if (Math.abs(angle) < GameConstants.BALL.MIN_ANGLE) {
+    const newAngle = angle < 0 ? -GameConstants.BALL.MIN_ANGLE : GameConstants.BALL.MIN_ANGLE;
     ball.vx = speed * Math.cos(newAngle);
     ball.vy = speed * Math.sin(newAngle);
-  } else if (Math.abs(Math.abs(angle) - Math.PI) < minAngle) {
-    // near 180 degrees (going left)
-    const newAngle = angle < 0 ? -(Math.PI - minAngle) : (Math.PI - minAngle);
+  } else if (Math.abs(Math.abs(angle) - Math.PI) < GameConstants.BALL.MIN_ANGLE) {
+    const newAngle = angle < 0 ? -(Math.PI - GameConstants.BALL.MIN_ANGLE) : (Math.PI - GameConstants.BALL.MIN_ANGLE);
     ball.vx = speed * Math.cos(newAngle);
     ball.vy = speed * Math.sin(newAngle);
   }
 }
-
 
 function updateInputState(
   inputs: InputStates, 
