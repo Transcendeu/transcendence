@@ -15,7 +15,7 @@ jobs:
     steps:
       - name: Create Pull Request to main
         env:
-          GH_TOKEN: ${{ secrets.PAT_SECRET}}
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
           HEAD_BRANCH: ${{ github.ref_name }}
         run: |
           response=$(curl -s -X POST -H "Authorization: token $GH_TOKEN" \
@@ -23,6 +23,10 @@ jobs:
             https://api.github.com/repos/${{ github.repository }}/pulls \
             -d "{\"title\":\"Hotfix: $HEAD_BRANCH\",\"head\":\"$HEAD_BRANCH\",\"base\":\"main\",\"body\":\"PR automático criado para aplicar hotfix na main.\"}")
           echo "$response"
+          if echo "$response" | grep -q '"A pull request already exists"'; then
+            echo "Já existe um PR aberto para esta branch. Nenhuma ação necessária."
+            exit 0
+          fi
           if ! echo "$response" | grep -q '"url"'; then
             echo "Erro ao criar o PR!"
             exit 1
