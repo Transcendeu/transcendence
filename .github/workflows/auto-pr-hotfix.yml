@@ -13,11 +13,8 @@ jobs:
   create-pr:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
       - name: Create Pull Request to main
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/pull-request@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           base: main
