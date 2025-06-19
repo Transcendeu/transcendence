@@ -21,7 +21,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           base: main
-          branch: ${{ github.ref_name }}
+          head: ${{ github.ref_name }}
           title: 'Hotfix: ${{ github.ref_name }}'
           body: 'PR automático criado para aplicar hotfix na main.'
           draft: false 
