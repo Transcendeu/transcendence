@@ -1,4 +1,4 @@
-FROM node:20-alpine
+FROM node:22-alpine
 
 WORKDIR /app
 
@@ -8,9 +8,8 @@ RUN npm install
 
 COPY src ./src
 
-# Ensure .env file is copied
-COPY .env .env
+COPY tsconfig.json ./
 
-EXPOSE 3000
+RUN npm run build
 
 CMD ["npm", "start"]
