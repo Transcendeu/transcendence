@@ -12,7 +12,9 @@ jobs:
       - name: Validate source branch and author
         id: validate
         run: |
-          if [[ "$GITHUB_HEAD_REF" =~ ^hotfix\/.*$ || "$GITHUB_HEAD_REF" =~ ^release-[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          BRANCH_NAME="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+          echo "Branch de origem: $BRANCH_NAME"
+          if [[ "$BRANCH_NAME" =~ ^hotfix\/.*$ || "$BRANCH_NAME" =~ ^release-[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             if [[ "$GITHUB_ACTOR" == "github-actions[bot]" ]]; then
               echo "autorizado=true" >> $GITHUB_OUTPUT
               exit 0
