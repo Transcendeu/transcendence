@@ -1,0 +1,55 @@
+name: Auto Release PR for Feature Branches
+
+on:
+  push:
+    branches:
+      - 'feature/*'
+
+jobs:
+  create-release-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get latest release tag
+        id: get_tag
+        run: |
+          git fetch --tags
+          latest_tag=$(git tag --list 'release-*' --sort=-v:refname | head -n 1)
+          if [ -z "$latest_tag" ]; then
+            echo "version=1.0.0" >> $GITHUB_OUTPUT
+          else
+            version=$(echo $latest_tag | sed 's/release-//')
+            IFS='.' read -r major minor patch <<< "$version"
+            patch=$((patch+1))
+            new_version="$major.$minor.$patch"
+            echo "version=$new_version" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create release branch
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git checkout -b release-${{ steps.get_tag.outputs.version }}
+          git push origin release-${{ steps.get_tag.outputs.version }}
+
+      - name: Create Pull Request from feature to release
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base: release-${{ steps.get_tag.outputs.version }}
+          branch: ${{ github.ref_name }}
+          title: 'Feature: ${{ github.ref_name }} → release-${{ steps.get_tag.outputs.version }}'
+          body: 'PR automático criado para merge da feature na release.'
+          draft: false
+
+      - name: Block manual PRs
+        run: |
+          if [[ "$GITHUB_ACTOR" == "github-actions[bot]" ]]; then
+            echo "PR criado pelo workflow, permitido."
+            exit 0
+          else
+            echo "Apenas o workflow pode abrir PR para main."
+            exit 1
+          fi 
