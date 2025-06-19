@@ -15,7 +15,7 @@ jobs:
     steps:
       - name: Create Pull Request to main
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
           HEAD_BRANCH: ${{ github.ref_name }}
         run: |
           curl -X POST -H "Authorization: token $GH_TOKEN" \
