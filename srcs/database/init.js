@@ -49,13 +49,34 @@ const initDatabase = () => {
           revoked BOOLEAN DEFAULT 0,
           auth_provider TEXT DEFAULT 'local',
           FOREIGN KEY (user_id) REFERENCES USER(id) ON DELETE CASCADE
-        )
-      `, (err) => {
-        if (err) {
-          return reject(err);
+        )`,
+        (err) => 
+        {
+             if (err) {
+                return reject(err);
+             }
+            resolve();
         }
-        resolve();
-      });
+      );
+      db.run(`
+        CREATE TABLE IF NOT EXISTS GAME (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          p1_id INTEGER NOT NULL,
+          p2_id INTEGER NOT NULL,
+          p1_score INTEGER NOT NULL,
+          p2_score INTEGER NOT NULL
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (p1_id) REFERENCES USER(id) ON DELETE CASCADE,
+          FOREIGN KEY (p2_id) REFERENCES USER(id) ON DELETE CASCADE
+        )`,
+        (err) =>
+        {
+             if (err) {
+                return reject(err);
+             }
+            resolve();
+        }
+      );
     });
   });
 };
@@ -106,17 +127,23 @@ initDatabase()
 
     // 5.3 Buscar usuário por email ou username
     fastify.get('/users', async (request, reply) => {
+    
       const { emailOrUsername } = request.query;
       if (!emailOrUsername) {
-        return reply.code(400).send({ error: 'Parâmetro emailOrUsername é obrigatorio' });
+        return reply
+        .code(400)
+        .send({ error: 'Parâmetro emailOrUsername é obrigatorio' });
       }
+
       return new Promise((resolve, reject) => {
         db.get(
           'SELECT * FROM USER WHERE email = ? OR username = ?',
           [emailOrUsername, emailOrUsername],
           (err, row) => {
             if (err) {
-              reply.code(500).send({ error: 'Erro no banco de dados' });
+              reply
+                .code(500)
+                .send({ error: 'Erro no banco de dados' });
               return reject(err);
             }
             if (!row) {
@@ -209,7 +236,9 @@ initDatabase()
           values,
           (err, rows) => {
             if (err) {
-              reply.code(500).send({ error: 'Erro no banco de dados' });
+              reply
+                .code(500)
+                .send({ error: 'Erro no banco de dados' });
               return reject(err);
             }
             resolve(rows);
@@ -245,14 +274,14 @@ initDatabase()
       });
     });
 
-    // 6. Inicia o servidor Fastify na porta 5173
+    // 6. Inicia o servidor Fastify na porta 5000
     const start = async () => {
       try {
         await fastify.listen({
-          port: process.env.PORT || 5173,
+          port: process.env.PORT || 5000,
           host: '0.0.0.0'
         });
-        fastify.log.info(`Database service rodando em http://0.0.0.0:${process.env.PORT || 5173}`);
+        fastify.log.info(`Database service rodando em http://0.0.0.0:${process.env.PORT || 5000}`);
       } catch (err) {
         fastify.log.error(err);
         process.exit(1);

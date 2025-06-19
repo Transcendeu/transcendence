@@ -24,6 +24,8 @@ services:
     build:
       context: ./srcs/auth
       dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
     volumes:
       - ./srcs/auth:/app
       - /app/node_modules
