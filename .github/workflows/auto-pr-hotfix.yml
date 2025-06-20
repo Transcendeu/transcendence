@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - 'hotfix/*'
+      - 'release-*'
 
 permissions:
   contents: write
