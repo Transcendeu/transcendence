@@ -59,26 +59,4 @@ jobs:
           git checkout -b ${{ steps.version.outputs.release_branch }}
           git add .
           git commit -m "Bump version to ${{ steps.version.outputs.version }}"
-          git push origin ${{ steps.version.outputs.release_branch }}
-
-      - name: Create Pull Request from feature to release
-        uses: peter-evans/create-pull-request@v6
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          base: ${{ steps.version.outputs.release_branch }}
-          branch: ${{ github.ref_name }}
-          title: 'Feature: ${{ github.ref_name }} → ${{ steps.version.outputs.release_branch }}'
-          body: |
-            ## Automatic PR created for feature branch
-            
-            **Feature Branch:** `${{ github.ref_name }}`
-            **Release Branch:** `${{ steps.version.outputs.release_branch }}`
-            **New Version:** `${{ steps.version.outputs.version }}`
-            
-            This PR was automatically created when pushing to a feature branch.
-            
-            ### Changes:
-            - Bumped version to ${{ steps.version.outputs.version }}
-            - Updated all service package.json files
-          draft: false
-          delete-branch: false 
+          git push origin ${{ steps.version.outputs.release_branch }} 
