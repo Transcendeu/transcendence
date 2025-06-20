@@ -121,3 +121,11 @@ Please read our contributing guidelines before submitting pull requests.
 [Add your license information here]
 
 https://tcdmodules.vercel.app/v14?state=100966471
+
+## Codeowners
+
+* @alineagq
+* @Ferskys
+* @iW90
+* @nicolasprudencio
+* @pragmatic-antithesis 
