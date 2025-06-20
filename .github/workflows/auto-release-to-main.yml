@@ -1,0 +1,54 @@
+name: Auto Release to Main
+
+on:
+  push:
+    branches:
+      - 'release-*'
+
+jobs:
+  create-main-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version from branch name
+        id: version
+        run: |
+          # Extract version from branch name (e.g., release-1.0.1 -> 1.0.1)
+          version=$(echo ${{ github.ref_name }} | sed 's/release-//')
+          echo "version=$version" >> $GITHUB_OUTPUT
+          echo "Release version: $version"
+
+      - name: Create Pull Request to main
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base: main
+          branch: ${{ github.ref_name }}
+          title: 'Release: ${{ steps.version.outputs.version }}'
+          body: |
+            ## Release ${{ steps.version.outputs.version }}
+            
+            **Release Branch:** `${{ github.ref_name }}`
+            **Version:** `${{ steps.version.outputs.version }}`
+            
+            This PR was automatically created when a release branch was pushed.
+            
+            ### What's included in this release:
+            - All features merged from feature branches
+            - Version bumped to ${{ steps.version.outputs.version }}
+            - Updated all service package.json files
+            
+            ### Checklist:
+            - [ ] Code review completed
+            - [ ] Tests passing
+            - [ ] Documentation updated
+            - [ ] Ready for deployment
+            
+            ### Deployment:
+            Once this PR is merged to main, it will be ready for production deployment.
+          draft: false
+          delete-branch: false 
