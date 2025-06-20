@@ -1,10 +1,9 @@
 name: Auto Release to Main
 
 on:
-  workflow_run:
-    workflows: ["Auto Release PR for Feature Branches"]
-    types:
-      - completed
+  push:
+    branches:
+      - 'release-*'
 
 permissions:
   contents: write
@@ -19,24 +18,17 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Get latest release branch
-        id: get_release_branch
-        run: |
-          branch=$(git ls-remote --heads origin 'release-*' | awk '{print $2}' | sed 's/refs\/heads\///' | sort -V | tail -n1)
-          echo "release_branch=$branch" >> $GITHUB_OUTPUT
-          echo "Última release branch: $branch"
-
       - name: Extract version from branch name
         id: version
         run: |
-          version=$(echo "${{ steps.get_release_branch.outputs.release_branch }}" | sed 's/release-//')
+          version=$(echo ${{ github.ref_name }} | sed 's/release-//')
           echo "version=$version" >> $GITHUB_OUTPUT
           echo "Release version: $version"
 
       - name: Create Pull Request to main
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          HEAD_BRANCH: ${{ steps.get_release_branch.outputs.release_branch }}
+          HEAD_BRANCH: ${{ github.ref_name }}
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           response=$(curl -s -X POST -H "Authorization: token $GH_TOKEN" \
