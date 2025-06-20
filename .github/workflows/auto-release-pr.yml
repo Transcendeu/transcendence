@@ -55,8 +55,18 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
-          # Create and push release branch
-          git checkout -b ${{ steps.version.outputs.release_branch }}
-          git add .
-          git commit -m "Bump version to ${{ steps.version.outputs.version }}"
+          git fetch origin
+          if git ls-remote --exit-code --heads origin ${{ steps.version.outputs.release_branch }}; then
+            # Se a branch já existe, commita as alterações antes de trocar de branch
+            git add .
+            git commit -m "Bump version to ${{ steps.version.outputs.version }}" || echo "Nada para commitar"
+            git checkout ${{ steps.version.outputs.release_branch }}
+            # Faz merge das alterações da feature na release
+            git merge ${{ github.ref_name }} --no-edit
+          else
+            # Se não existe, cria a branch a partir da branch atual
+            git checkout -b ${{ steps.version.outputs.release_branch }}
+            git add .
+            git commit -m "Bump version to ${{ steps.version.outputs.version }}" || echo "Nada para commitar"
+          fi
           git push origin ${{ steps.version.outputs.release_branch }} 
