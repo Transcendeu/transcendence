@@ -27,32 +27,21 @@ jobs:
           echo "Release version: $version"
 
       - name: Create Pull Request to main
-        uses: peter-evans/create-pull-request@v6
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          base: main
-          branch: ${{ github.ref_name }}
-          title: 'Release: ${{ steps.version.outputs.version }}'
-          body: |
-            ## Release ${{ steps.version.outputs.version }}
-            
-            **Release Branch:** `${{ github.ref_name }}`
-            **Version:** `${{ steps.version.outputs.version }}`
-            
-            This PR was automatically created when a release branch was pushed.
-            
-            ### What's included in this release:
-            - All features merged from feature branches
-            - Version bumped to ${{ steps.version.outputs.version }}
-            - Updated all service package.json files
-            
-            ### Checklist:
-            - [ ] Code review completed
-            - [ ] Tests passing
-            - [ ] Documentation updated
-            - [ ] Ready for deployment
-            
-            ### Deployment:
-            Once this PR is merged to main, it will be ready for production deployment.
-          draft: false
-          delete-branch: false 
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_BRANCH: ${{ github.ref_name }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          response=$(curl -s -X POST -H "Authorization: token $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository }}/pulls \
+            -d "{\"title\":\"Release: $VERSION\",\"head\":\"$HEAD_BRANCH\",\"base\":\"main\",\"body\":\"PR automático criado para aplicar release $VERSION na main.\n\n**Release Branch:** $HEAD_BRANCH\n**Version:** $VERSION\n\nEste PR foi criado automaticamente.\"}")
+          echo "$response"
+          if echo "$response" | grep -q '"A pull request already exists"'; then
+            echo "Já existe um PR aberto para esta branch. Nenhuma ação necessária."
+            exit 0
+          fi
+          if ! echo "$response" | grep -q '"url"'; then
+            echo "Erro ao criar o PR!"
+            exit 1
+          fi 
