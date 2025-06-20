@@ -1,6 +1,6 @@
 {
   "name": "pong-game",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "A modern Pong game implementation using TypeScript",
   "type": "module",
   "scripts": {
