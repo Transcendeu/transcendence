@@ -17,6 +17,7 @@ FROM node:20-alpine AS runtime
 WORKDIR /app
 
 COPY package*.json ./
+COPY --from=build /app/package-lock.json ./
 RUN npm ci --omit=dev
 
 COPY --from=build /app/dist ./dist
