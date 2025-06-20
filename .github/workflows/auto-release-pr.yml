@@ -34,7 +34,7 @@ jobs:
           new_version="$major.$minor.$new_patch"
           
           echo "New version: $new_version"
-          echo "version=$new_version" >> $GITHUB_OUTPUT
+            echo "version=$new_version" >> $GITHUB_OUTPUT
           echo "release_branch=release-$new_version" >> $GITHUB_OUTPUT
 
       - name: Update version in package.json
@@ -47,7 +47,7 @@ jobs:
             if [ -f "$file" ]; then
               echo "Updating version in $file"
               sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"${{ steps.version.outputs.version }}\"/" "$file"
-            fi
+          fi
           done
 
       - name: Create release branch
