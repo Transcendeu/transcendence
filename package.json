@@ -1,6 +1,6 @@
 {
   "name": "transcendence",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Pong game with advanced features",
   "private": true,
   "scripts": {
@@ -11,7 +11,13 @@
     "type": "git",
     "url": "git+https://github.com/Transcendeu/transcendence.git"
   },
-  "keywords": ["pong", "game", "multiplayer", "fastify", "typescript"],
+  "keywords": [
+    "pong",
+    "game",
+    "multiplayer",
+    "fastify",
+    "typescript"
+  ],
   "author": "Transcendeu Team",
   "license": "MIT"
-} 
+}
