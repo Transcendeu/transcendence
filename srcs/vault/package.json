@@ -1,6 +1,6 @@
 {
   "name": "vault-service",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Backend de Vault com Fastify e TS",
   "type": "commonjs",
   "scripts": {
