@@ -1,0 +1,16 @@
+{
+	"name": "sqlite-api",
+	"version": "1.0.0",
+	"main": "init.js",
+	"scripts": {
+	  "start": "node init.js"
+	},
+	"dependencies": {
+		"@fastify/cors": "^8.4.1",
+		"fastify": "^4.24.3",
+		"fastify-cookie": "^5.7.0",
+		"fastify-plugin": "^4.5.0",
+		"sqlite3": "^5.1.6"
+	}
+  }
+  
