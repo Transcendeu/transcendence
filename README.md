@@ -21,9 +21,9 @@ The project consists of multiple services:
 
 ## Features
 
-### Frontend - Indy
+### Frontend
 
-- [ ] Tailwind CSS
+- [x] Tailwind CSS
 
 ### Authentication (api/auth) - Fer
 - [x] Two-Factor Authentication (2FA)
@@ -41,12 +41,12 @@ The project consists of multiple services:
 - [ ] Match history and statistics
 - [ ] Game database implementation
 
-### Infrastructure - Indy
+### Infrastructure
 - [x] Nginx web server configuration
 - [x] ModSecurity implementation
 - [x] Web Application Firewall (WAF)
 - [x] Frontend deployment setup
-- [ ] Vault Hashicorp
+- [x] Vault Hashicorp
 
 ### CLI - Mark
 - [ ] Replacing Basic Pong with Server-Side Pong and Implementing an API
@@ -121,3 +121,11 @@ Please read our contributing guidelines before submitting pull requests.
 [Add your license information here]
 
 https://tcdmodules.vercel.app/v14?state=100966471
+
+## Codeowners
+
+* @alineagq
+* @Ferskys
+* @iW90
+* @nicolasprudencio
+* @pragmatic-antithesis 

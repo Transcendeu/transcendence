@@ -1,0 +1,22 @@
+# Node modules locais
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Pastas de build
+dist
+build
+
+# Arquivos de configuração do editor
+.vscode
+.idea
+
+# Arquivos de sistema
+.DS_Store
+Thumbs.db
+
+# Arquivos de log
+*.log
+
+# Arquivos de ambiente locais (caso tenha .env, evitar subir segredo)
+.env

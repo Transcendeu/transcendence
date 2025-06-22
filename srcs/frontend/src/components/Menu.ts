@@ -290,8 +290,7 @@ export class Menu {
                     const response = await fetch('/api/auth/logout', {
                         method: 'POST',
                         headers: {
-                            'Authorization': `Bearer ${parsedData.accessToken}`,
-                            'Content-Type': 'application/json'
+                            'Authorization': `Bearer ${parsedData.accessToken}`
                         }
                     });
 

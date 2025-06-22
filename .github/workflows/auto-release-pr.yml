@@ -1,0 +1,97 @@
+name: Auto Release PR for Feature Branches
+
+on:
+  push:
+    branches:
+      - 'feature/*'
+
+jobs:
+  create-release-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Get current version and bump
+        id: version
+        run: |
+          # Read current version from package.json
+          current_version=$(node -p "require('./package.json').version")
+          echo "Current version: $current_version"
+          
+          # Split version into parts
+          IFS='.' read -r major minor patch <<< "$current_version"
+          
+          # Bump patch version
+          new_patch=$((patch + 1))
+          new_version="$major.$minor.$new_patch"
+          
+          echo "New version: $new_version"
+            echo "version=$new_version" >> $GITHUB_OUTPUT
+          echo "release_branch=release-$new_version" >> $GITHUB_OUTPUT
+
+      - name: Update version in package.json
+        run: |
+          # Update version in root package.json
+          npm version ${{ steps.version.outputs.version }} --no-git-tag-version
+          
+          # Update version in all service package.json files
+          for file in srcs/*/package.json; do
+            if [ -f "$file" ]; then
+              echo "Updating version in $file"
+              sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"${{ steps.version.outputs.version }}\"/" "$file"
+          fi
+          done
+
+      - name: Create release branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git fetch origin
+          if git ls-remote --exit-code --heads origin ${{ steps.version.outputs.release_branch }}; then
+            # Se a branch já existe, commita as alterações antes de trocar de branch
+            git add .
+            git commit -m "Bump version to ${{ steps.version.outputs.version }}" || echo "Nada para commitar"
+            git checkout ${{ steps.version.outputs.release_branch }}
+            # Faz merge das alterações da feature na release
+            git merge ${{ github.ref_name }} --no-edit
+          else
+            # Se não existe, cria a branch a partir da branch atual
+            git checkout -b ${{ steps.version.outputs.release_branch }}
+            git add .
+            git commit -m "Bump version to ${{ steps.version.outputs.version }}" || echo "Nada para commitar"
+          fi
+          git push origin ${{ steps.version.outputs.release_branch }} 
+
+      - name: Create Pull Request to main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_BRANCH: ${{ steps.version.outputs.release_branch }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          response=$(curl -s -X POST -H "Authorization: token $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository }}/pulls \
+            -d '{
+              "title": "Release: '$VERSION'",
+              "head": "'$HEAD_BRANCH'",
+              "base": "main",
+              "body": "PR automático criado para aplicar release '$VERSION' na main.\n\n**Release Branch:** '$HEAD_BRANCH'\n**Version:** '$VERSION'\n\nEste PR foi criado automaticamente."
+            }')
+          echo "$response"
+          if echo "$response" | grep -q '"A pull request already exists"'; then
+            echo "Já existe um PR aberto para esta branch. Nenhuma ação necessária."
+            exit 0
+          fi
+          if ! echo "$response" | grep -q '"url"'; then
+            echo "Erro ao criar o PR!"
+            exit 1
+          fi 
