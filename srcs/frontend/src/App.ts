@@ -1,11 +1,13 @@
 import { Router } from './router/Router';
 import { Menu } from './components/Menu';
-import { PongGame } from './components/PongGame';
 import { NotFound } from './components/NotFound';
+import { GameManager } from './components/game-component/game-manager';
 import { Login } from './components/Login';
 import { Register } from './components/Register';
 import { Settings } from './components/Settings';
 import { LocalTournament } from './components/LocalTournament';
+import { MatchFinder } from './components/game-component/match-finder';
+
 
 export class App {
     private container: HTMLElement;
@@ -88,24 +90,34 @@ export class App {
     }
 
     private async startLocalGame(): Promise<void> {
-        return new Promise((resolve) => {
-            new PongGame(this.container, () => {
+        return new Promise(async (resolve) => {
+            const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
+            const name = userData.username ?? '';
+            let manager: GameManager | null = new GameManager(this.container, () => {
                 this.router.navigate('/');
                 resolve();
+                manager = null;
             });
+            await manager.initLocal(name);
         });
     }
 
     private async startOnlineGame(): Promise<void> {
-        // TODO: Implement online game mode
-        this.container.innerHTML = `
-            <div class="coming-soon">
-                <h2>Online Mode Coming Soon!</h2>
-                <p>Challenge players from around the world.</p>
-                <button class="menu-button" onclick="window.history.back()">Go Back</button>
-            </div>
-        `;
-        return Promise.resolve();
+        type MatchRole = 'player1' | 'player2' | 'spectator';
+        return new Promise(async (resolve) => {
+            const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
+            const name = userData.username;
+
+            const matchFinder = new MatchFinder(this.container);
+            const matchInfo: { gameId: string | null, role: MatchRole } = await matchFinder.findMatch(name);
+
+            let manager: GameManager | null = new GameManager(this.container, () => {
+                this.router.navigate('/');
+                resolve();
+                manager = null;
+            });
+            await manager.initOnline(name, matchInfo);
+        });
     }
 
     private async startTournament(): Promise<void> {

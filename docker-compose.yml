@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
 
   vault:
@@ -77,8 +75,10 @@ services:
       - "80:80"
     depends_on:
       - auth
+      - relay
     networks:
       - transcendence_network
+#    restart: on-failure
 
   frontend:
     build:
@@ -98,6 +98,27 @@ services:
     networks:
       - transcendence_network
 
+  engine:
+    build:
+      context: ./srcs/game/engine
+      dockerfile: Dockerfile
+    container_name: pong_engine
+    depends_on:
+      - frontend
+    networks:
+      - transcendence_network
+
+  relay:
+    build:
+      context: ./srcs/game/relay
+      dockerfile: Dockerfile
+    container_name: pong_relay
+    depends_on:
+      - engine
+    networks:
+    - transcendence_network
+
 networks:
   transcendence_network:
     driver: bridge
+    
