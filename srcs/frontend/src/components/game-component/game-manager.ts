@@ -91,6 +91,12 @@ async initOnline(name: string, matchInfo: {gameId: string | null, role: string})
   }
 
   private cleanup() {
+    const backButton = document.getElementById('backButton');
+    if (backButton) {
+        backButton.removeEventListener('click', this.handleBackButtonClick);
+    }
+    window.removeEventListener('beforeunload', this.handleWindowBeforeUnload);
+
     if (this.currentRenderer) {
       this.currentRenderer.cleanup();
       this.currentRenderer = null;
@@ -113,7 +119,6 @@ async initOnline(name: string, matchInfo: {gameId: string | null, role: string})
       this.inputHandlerCleanup();
       this.inputHandlerCleanup = null;
     }
-
     this.gameState = null;
     this.player1DisplayName = undefined;
     this.player2DisplayName = undefined;
@@ -131,7 +136,7 @@ async initOnline(name: string, matchInfo: {gameId: string | null, role: string})
 
       this.gameState = null;
       let normalGameEnd = false;
-
+      this.setupBackButton();
       if (this.activeSocket) {
         this.activeSocket.close();
       }
@@ -176,123 +181,130 @@ async initOnline(name: string, matchInfo: {gameId: string | null, role: string})
       this.activeSocket.onerror = (err) => console.error('WebSocket error', err);
 
       const toggleBtn = document.getElementById('toggleRenderer') as HTMLButtonElement;
-      toggleBtn.textContent = this.alternateRender ? '2D' : '3D';
+      if (toggleBtn) {
+          toggleBtn.textContent = this.alternateRender ? '2D' : '3D';
 
-      toggleBtn.onclick = async () => {
-        await this.toggleRenderer();
-        toggleBtn.textContent = this.alternateRender ? '2D' : '3D';
-      };
+          toggleBtn.onclick = async () => {
+          await this.toggleRenderer();
+          toggleBtn.textContent = this.alternateRender ? '2D' : '3D';
+        };
+      }
 
       const forfeitButton = document.getElementById('forfeit') as HTMLButtonElement;
-      let forfeitTimeout: number | null = null;
-      let isConfirming = false;
-      let cooldown = false;
+      if (forfeitButton) {
+        let forfeitTimeout: number | null = null;
+        let isConfirming = false;
+        let cooldown = false;
 
-      const resetForfeitButton = () => {
-        isConfirming = false;
-        forfeitButton.textContent = 'Concede';
-        forfeitButton.classList.remove('conceding');
-        if (forfeitTimeout) {
-          clearTimeout(forfeitTimeout);
-          forfeitTimeout = null;
-        }
-      };
+        const resetForfeitButton = () => {
+          isConfirming = false;
+          forfeitButton.textContent = 'Concede';
+          forfeitButton.classList.remove('conceding');
+          if (forfeitTimeout) {
+            clearTimeout(forfeitTimeout);
+            forfeitTimeout = null;
+          }
+        };
 
-      const startCooldown = () => {
-        cooldown = true;
-        forfeitButton.disabled = true;
-        setTimeout(() => {
-          cooldown = false;
-          forfeitButton.disabled = false;
-        }, 1000);
-      };
+        const startCooldown = () => {
+          cooldown = true;
+          forfeitButton.disabled = true;
+          setTimeout(() => {
+            cooldown = false;
+            forfeitButton.disabled = false;
+          }, 1000);
+        };
 
-      forfeitButton.addEventListener('click', () => {
-        if (cooldown) return;
-        startCooldown();
+        forfeitButton.addEventListener('click', () => {
+          if (cooldown) return;
+          startCooldown();
 
-        if (isConfirming) {
-          this.activeSocket?.send(JSON.stringify({ type: 'forfeit', name: playerName, role }));
-          resetForfeitButton();
-        } else {
-          isConfirming = true;
-          forfeitButton.textContent = 'Forfeit the match?';
-          forfeitButton.classList.add('conceding');
-          forfeitTimeout = window.setTimeout(resetForfeitButton, 5000);
-        }
-      });
-      
+          if (isConfirming) {
+            this.activeSocket?.send(JSON.stringify({ type: 'forfeit', name: playerName, role }));
+            resetForfeitButton();
+          } else {
+            isConfirming = true;
+            forfeitButton.textContent = 'Forfeit the match?';
+            forfeitButton.classList.add('conceding');
+            forfeitTimeout = window.setTimeout(resetForfeitButton, 5000);
+          }
+        });
+      }
+
       const matchControl = document.getElementById('matchControl') as HTMLButtonElement;
-      matchControl.onclick = () => {
-        if (!this.gameState) return;
-        let type: string;
-        switch (this.gameState.status) {
-          case 'waiting':
-            type = 'ready';
-            break;
-          case 'playing':
-            type = 'pause';
-            break;
-          case 'paused':
-            type = 'resume';
-            break;
-          default:
-            return;
-        }
-        this.activeSocket?.send(JSON.stringify({ type: type, name: playerName, role }));
-      };
+      if (matchControl) {
+        matchControl.onclick = () => {
+          if (!this.gameState) return;
+          let type: string;
+          switch (this.gameState.status) {
+            case 'waiting':
+              type = 'ready';
+              break;
+            case 'playing':
+              type = 'pause';
+              break;
+            case 'paused':
+              type = 'resume';
+              break;
+            default:
+              return;
+          }
+          this.activeSocket?.send(JSON.stringify({ type: type, name: playerName, role }));
+        };
+      }
     }
 
-    private updateGame(data: any) {
-      const scoreP1 = document.getElementById('score-player1');
-      const scoreP2 = document.getElementById('score-player2');
-      if (scoreP1 && scoreP2) {
-        scoreP1.textContent = data.scores.player1.toString();
-        scoreP2.textContent = data.scores.player2.toString();
-      }
-      const nameP1 = document.getElementById('name-player1');
-      const nameP2 = document.getElementById('name-player2');
-      if (nameP1 && nameP2 && data.playerNames) {
-        const displayp1 = this.player1DisplayName || data.playerNames.player1;
-        const displayp2 = this.player2DisplayName || data.playerNames.player2;
-        nameP1.textContent = displayp1 || 'Waiting...';
-        nameP2.textContent = displayp2 || 'Waiting...';
-      }
+  private updateGame(data: any) {
+    if (!data) return;
 
-      const matchControl = document.getElementById('matchControl') as HTMLButtonElement;
-      if (matchControl && data.gameStatus) {
-        switch (data.gameStatus) {
-          case 'waiting':
-            matchControl.textContent = 'Waiting';
-            matchControl.disabled = true;
-            break;
-          case 'playing':
-            matchControl.textContent = 'Pause';
-            matchControl.disabled = false;
-            break;
-          case 'paused':
-            matchControl.textContent = 'Resume';
-            matchControl.disabled = false;
-            break;
-          case 'queued':
-            matchControl.textContent = 'Waiting';
-            matchControl.disabled = true;
-            break;
-          default:
-            matchControl.disabled = true;
-        }
-        if (this.hideGui) {
+    const scoreP1 = document.getElementById('score-player1');
+    const scoreP2 = document.getElementById('score-player2');
+    if (scoreP1 && scoreP2 && data.scores) {
+      scoreP1.textContent = data.scores.player1?.toString() || '0';
+      scoreP2.textContent = data.scores.player2?.toString() || '0';
+    }
+
+    const nameP1 = document.getElementById('name-player1');
+    const nameP2 = document.getElementById('name-player2');
+    if (nameP1 && nameP2 && data.playerNames) {
+      const displayp1 = this.player1DisplayName || data.playerNames.player1;
+      const displayp2 = this.player2DisplayName || data.playerNames.player2;
+      nameP1.textContent = displayp1 || 'Waiting...';
+      nameP2.textContent = displayp2 || 'Waiting...';
+    }
+
+    const matchControl = document.getElementById('matchControl') as HTMLButtonElement;
+    if (matchControl && data.gameStatus) {
+      switch (data.gameStatus) {
+        case 'waiting':
+          matchControl.textContent = 'Waiting';
           matchControl.disabled = true;
-          matchControl.classList.add('hidden');
-        }
-        if (matchControl.disabled) {
-            matchControl.classList.remove('btn-start');
-        } else {
-            matchControl.classList.add('btn-start');
-            matchControl.classList.remove('hidden');
-        }
+          break;
+        case 'playing':
+          matchControl.textContent = 'Pause';
+          matchControl.disabled = false;
+          break;
+        case 'paused':
+          matchControl.textContent = 'Resume';
+          matchControl.disabled = false;
+          break;
+        case 'queued':
+          matchControl.textContent = 'Waiting';
+          matchControl.disabled = true;
+          break;
+        default:
+          matchControl.disabled = true;
       }
-      const forfeitButton = document.getElementById('forfeit') as HTMLButtonElement;
+      if (matchControl.disabled) {
+          matchControl.classList.remove('btn-start');
+      } else {
+          matchControl.classList.add('btn-start');
+          matchControl.classList.remove('hidden');
+      }
+    }
+
+    const forfeitButton = document.getElementById('forfeit') as HTMLButtonElement;
+    if (forfeitButton) {
       if (this.hideGui) {
         forfeitButton.disabled = true;
         forfeitButton.classList.add('hidden');
@@ -301,6 +313,7 @@ async initOnline(name: string, matchInfo: {gameId: string | null, role: string})
         forfeitButton.classList.remove('hidden');
       }
     }
+  }
 
     private setupInputHandlers(socket: WebSocket, localPlay: boolean) {
     const keyState = {
@@ -473,15 +486,19 @@ this.gameEndScreen.innerHTML = `
     const wrapper = document.createElement('div');
     wrapper.className = 'game-container flex flex-col min-h-screen bg-neutral-950 pt-4';
 
-
     const inner = document.createElement('div');
     inner.className = 'flex flex-col items-center gap-4 w-[64vw] p-4 bg-black text-white rounded flex-grow';
  
     inner.innerHTML = `
       <!-- HUD -->
       <div class="flex flex-col items-center gap-2 w-full">
-        <div class="game-header w-full">
-          <h2>PONG</h2>
+        <div class="game-header w-full flex items-center justify-between">
+          <button id="backButton" class="flex items-center gap-1 w-10 justify-start">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
+          </svg>
+          </button>
+          <h2 class="text-center flex-1">PONG</h2>
         </div>
 
         <div class="hud flex justify-between items-center w-full text-sm sm:text-base">
@@ -517,5 +534,36 @@ this.gameEndScreen.innerHTML = `
 
     wrapper.appendChild(inner);
     return wrapper;
+  }
+
+  private setupBackButton() {
+    const backButton = document.getElementById('backButton');
+    if (backButton) {
+        backButton.addEventListener('click', this.handleBackButtonClick);
+    }
+
+    window.addEventListener('beforeunload',this.handleWindowBeforeUnload);
+    window.addEventListener('popstate', this.handlePopState);
+  }
+
+  private handleBackButtonClick = (e: Event) => {
+      e.preventDefault(); 
+      this.leavePage();
+      setTimeout(() => window.history.back(), 0);
+  };
+
+  private handlePopState = (e: PopStateEvent) => {
+      e.preventDefault();
+      this.leavePage();
+  };
+
+  private handleWindowBeforeUnload = (e: BeforeUnloadEvent) => {
+      this.leavePage();
+      e.preventDefault();
+  };
+
+  private leavePage() {    
+      this.cleanup();
+      this.onGameEnd?.();
   }
 }
