@@ -1,16 +1,30 @@
-FROM node:20-alpine
+# Stage 1: Build
+FROM node:20-alpine AS build
 
 WORKDIR /app
 
-COPY package*.json ./
+COPY package*.json tsconfig.json .env ./
 
 RUN npm install
 
-COPY . .
+COPY src ./src
 
-# Ensure .env file is copied
-COPY .env .env
+RUN npm run build
 
-EXPOSE 3000
+RUN ls -la /app/dist
+
+# Stage 2: Runtime
+FROM node:20-alpine AS runtime
+
+WORKDIR /app
+
+COPY --from=build /app/.env ./
+COPY --from=build /app/package*.json ./
+
+RUN npm ci --omit=dev
+
+COPY --from=build /app/dist ./dist
+
+EXPOSE 3005
 
 CMD ["npm", "start"]

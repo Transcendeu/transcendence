@@ -16,13 +16,16 @@ FROM node:20-alpine AS runtime
 
 WORKDIR /app
 
-COPY package*.json ./
+COPY --from=build /app/package.json ./
 COPY --from=build /app/package-lock.json ./
 RUN npm ci --omit=dev
 
 COPY --from=build /app/dist ./dist
 
-ENV NODE_ENV=production
-EXPOSE 3000
+COPY tools/vault-entrypoint.sh ./tools/vault-entrypoint.sh
+RUN chmod 755 /app/tools/vault-entrypoint.sh
 
-CMD ["node", "dist/server.js"]
+ENV NODE_ENV=production
+EXPOSE 3082
+
+CMD ["sh", "tools/vault-entrypoint.sh"]
