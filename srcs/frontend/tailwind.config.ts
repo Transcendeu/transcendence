@@ -9,6 +9,7 @@ module.exports = {
         neonCyan: '#0ff',
         neonMagenta: '#f0f',
         neonGreen: '#0f0',
+        neonOrange: '#ff9900',
         magenta: '#f0f',
       },
       fontFamily: {

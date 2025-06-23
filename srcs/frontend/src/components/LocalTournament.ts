@@ -1,5 +1,5 @@
 import { Router } from '../router/Router';
-import { PongGame } from './PongGame';
+import { GameManager } from './game-component/game-manager';
 
 interface Player {
     name: string;
@@ -58,12 +58,13 @@ export class LocalTournament {
     }
 
     private showPlayerNameInputs(playerCount: number): void {
-        let inputs = '';
-        for (let i = 1; i <= playerCount; i++) {
+      let inputs = '';
+      for (let i = 1; i <= playerCount; i++) {
             inputs += `
                 <div class="form-group">
                     <label for="player${i}">Player ${i} Nickname:</label>
                     <input type="text" id="player${i}" required minlength="2" maxlength="15" placeholder="Enter nickname">
+                    <div id="player${i}-error" class="error-message"></div>
                 </div>
             `;
         }
@@ -73,6 +74,7 @@ export class LocalTournament {
                 <h2>ENTER PLAYER NAMES</h2>
                 <form id="playerNamesForm" class="setup-form">
                     ${inputs}
+                    <div id="form-error" class="error-message"></div>
                     <button type="submit" class="tournament-button">START TOURNAMENT</button>
                 </form>
             </div>
@@ -82,21 +84,73 @@ export class LocalTournament {
         if (form) {
             form.addEventListener('submit', (e) => {
                 e.preventDefault();
+                
+                // Clear previous errors
+                const errorMessages = this.container.querySelectorAll('.error-message');
+                errorMessages.forEach(el => {
+                    el.textContent = '';
+                    el.classList.remove('error-visible');
+                });
+                
+                const playerNames = new Set<string>();
+                let hasErrors = false;
+                
+                // Collect all names and check for duplicates
+                for (let i = 1; i <= playerCount; i++) {
+                    const input = document.getElementById(`player${i}`) as HTMLInputElement;
+                    const errorElement = document.getElementById(`player${i}-error`) as HTMLElement;
+                    const name = input.value.trim();
+                    
+                    if (!name) {
+                        errorElement.textContent = 'Name required';
+                        errorElement.classList.add('error-visible');
+                        input.classList.add('input-error');
+                        hasErrors = true;
+                        continue;
+                    }
+                    
+                    if (playerNames.has(name)) {
+                        errorElement.textContent = 'Name taken';
+                        errorElement.classList.add('error-visible');
+                        input.classList.add('input-error');
+                        hasErrors = true;
+                    } else {
+                        playerNames.add(name);
+                        input.classList.remove('input-error');
+                    }
+                }
+                
+                if (hasErrors) {
+                    const formError = document.getElementById('form-error') as HTMLElement;
+                    formError.textContent = 'Fix errors to continue';
+                    formError.classList.add('error-visible');
+                    return;
+                }
+                
+                // If no errors, proceed with tournament setup
                 this.players = [];
                 for (let i = 1; i <= playerCount; i++) {
                     const input = document.getElementById(`player${i}`) as HTMLInputElement;
-                    if (input.value.trim()) {
-                        this.players.push({
-                            name: input.value.trim(),
-                            wins: 0,
-                            losses: 0
-                        });
-                    }
+                    this.players.push({
+                        name: input.value.trim(),
+                        wins: 0,
+                        losses: 0
+                    });
                 }
-                if (this.players.length === playerCount) {
-                    this.startTournament();
-                }
+                
+                this.startTournament();
             });
+
+            // Add real-time validation
+            for (let i = 1; i <= playerCount; i++) {
+                const input = document.getElementById(`player${i}`) as HTMLInputElement;
+                input.addEventListener('input', () => {
+                    const errorElement = document.getElementById(`player${i}-error`) as HTMLElement;
+                    errorElement.textContent = '';
+                    errorElement.classList.remove('error-visible');
+                    input.classList.remove('input-error');
+                });
+            }
         }
     }
 
@@ -207,30 +261,37 @@ export class LocalTournament {
             <p>Round ${match.round}</p>
             <div class="countdown">Starting in: <span id="countdown">3</span></div>
         `;
-        this.container.insertBefore(announcementDiv, gameContainer);
+        //this.container.insertBefore(announcementDiv, gameContainer);
+        document.body.appendChild(announcementDiv); // Attach to body instead
 
         // Countdown
-        await new Promise<void>(resolve => {
+         await new Promise<void>(resolve => {
             let count = 3;
             const countdownSpan = document.getElementById('countdown');
             const interval = setInterval(() => {
-                count--;
-                if (countdownSpan) countdownSpan.textContent = count.toString();
-                if (count === 0) {
-                    clearInterval(interval);
-                    resolve();
-                }
+            count--;
+            if (countdownSpan) countdownSpan.textContent = count.toString();
+            if (count === 0) {
+                clearInterval(interval);
+                // Smooth fade out before removal
+                announcementDiv.classList.add('fade-out');
+                setTimeout(() => {
+                announcementDiv.remove();
+                resolve();
+                }, 300); // Match the animation duration
+            }
             }, 1000);
         });
 
-        // Start the game
-        new PongGame(gameContainer, () => {
-            // Update match results
-            const winner = 1; // Default to player 1 for now
+       const manager = new GameManager(gameContainer, (result) => {
+            // Extract winner from the result object
+            const winner = result!.matchWinner === 'player1' ? 1 : 2;
             const winningPlayer = winner === 1 ? match.player1 : match.player2;
             const losingPlayer = winner === 1 ? match.player2 : match.player1;
             
+            // Update match results with full game data
             match.winner = winningPlayer;
+            //match.score = result.finalScore; // Store full score object
             winningPlayer.wins++;
             losingPlayer.losses++;
 
@@ -239,7 +300,7 @@ export class LocalTournament {
             if (roundMatches.every(m => m.winner)) {
                 this.currentRound++;
                 
-                // Create next round matches
+                // Create next round matches using winners
                 const winners = roundMatches.map(m => m.winner!);
                 for (let i = 0; i < winners.length; i += 2) {
                     if (winners[i + 1]) {
@@ -254,13 +315,14 @@ export class LocalTournament {
 
             this.currentMatch++;
 
-            // Check if tournament is complete
+            // Check tournament completion
             if (this.currentMatch === this.matches.length) {
                 this.showTournamentResults();
             } else {
                 this.showTournamentBracket();
             }
         });
+        await manager.initLocal('', match.player1.name, match.player2.name);
     }
 
     private showTournamentResults(): void {

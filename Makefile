@@ -21,6 +21,7 @@ logs:
 	$(DOCKER) logs -f auth
 
 clean: down
+#docker rmi transcendence-frontend:latest transcendence-auth:latest transcendence-web-nginx:latest transcendence-api-gateway:latest transcendence-relay:latest transcendence-engine:latest
 	docker system prune -a
 	rm -rf srcs/vault/node_modules
 	rm -rf srcs/vault/dist
