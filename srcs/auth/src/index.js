@@ -65,7 +65,7 @@ const authenticateToken = async (request, reply) => {
 };
 
 // Register route
-fastify.post('/api/auth/register', async (request, reply) => {
+fastify.post('/register', async (request, reply) => {
   const { username, email, password } = request.body;
 
   if (!username || !email || !password) {
@@ -118,7 +118,7 @@ fastify.post('/api/auth/register', async (request, reply) => {
 });
 
 // Setup 2FA route
-fastify.post('/api/auth/setup-2fa', { preHandler: authenticateToken }, async (request, reply) => {
+fastify.post('/setup-2fa', { preHandler: authenticateToken }, async (request, reply) => {
   try {
     const secret = speakeasy.generateSecret({
       name: `Transcendence:${request.user.email}`
@@ -144,7 +144,7 @@ fastify.post('/api/auth/setup-2fa', { preHandler: authenticateToken }, async (re
 });
 
 // Verify and enable 2FA route
-fastify.post('/api/auth/verify-2fa', { preHandler: authenticateToken }, async (request, reply) => {
+fastify.post('/verify-2fa', { preHandler: authenticateToken }, async (request, reply) => {
   const { token } = request.body;
 
   if (!token) {
@@ -200,7 +200,7 @@ fastify.post('/api/auth/verify-2fa', { preHandler: authenticateToken }, async (r
 });
 
 // Login route
-fastify.post('/api/auth/login', async (request, reply) => {
+fastify.post('/login', async (request, reply) => {
   const { username, password, twoFactorToken } = request.body;
 
   if (!username || !password) {
@@ -281,7 +281,7 @@ fastify.post('/api/auth/login', async (request, reply) => {
 });
 
 // Refresh token route
-fastify.post('/api/auth/refresh', async (request, reply) => {
+fastify.post('/refresh', async (request, reply) => {
   const { refreshToken } = request.body;
   if (!refreshToken) {
     return reply.code(401).send({ error: 'Refresh token required' });
@@ -359,7 +359,7 @@ fastify.post('/api/auth/refresh', async (request, reply) => {
 });
 
 // Logout route
-fastify.post('/api/auth/logout', { preHandler: authenticateToken }, async (request, reply) => {
+fastify.post('/logout', { preHandler: authenticateToken }, async (request, reply) => {
   try {
     const authHeader = request.headers.authorization;
     const accessToken = authHeader.split(' ')[1];
@@ -386,7 +386,7 @@ fastify.post('/api/auth/logout', { preHandler: authenticateToken }, async (reque
 });
 
 // Get current user route
-fastify.get('/api/auth/me', { preHandler: authenticateToken }, async (request, reply) => {
+fastify.get('/me', { preHandler: authenticateToken }, async (request, reply) => {
   try {
     // 1) Busca o usuário no database-service usando o e-mail do token
     const { data: user } = await api.get('/users', {
@@ -418,11 +418,11 @@ fastify.get('/api/auth/me', { preHandler: authenticateToken }, async (request, r
 });
 
 // Health check endpoint
-fastify.get('/api/auth/health', async () => {
+fastify.get('/health', async () => {
   return { status: 'ok' };
 });
 
-fastify.get('/api/auth/google', async (request, reply) => {
+fastify.get('/google', async (request, reply) => {
   const url = oAuth2Client.generateAuthUrl({
     access_type: 'offline',
     scope: ['profile', 'email'],
@@ -432,7 +432,7 @@ fastify.get('/api/auth/google', async (request, reply) => {
 });
 
 // Update the Google callback route to handle errors better
-fastify.get('/api/auth/google/callback', async (request, reply) => {
+fastify.get('/google/callback', async (request, reply) => {
   const code = request.query.code;
   if (!code) {
     return reply.code(400).send('No code provided');
@@ -584,7 +584,7 @@ fastify.get('/api/auth/google/callback', async (request, reply) => {
   });
 
 // Add new route to handle 2FA verification for Google login
-fastify.post('/api/auth/verify-google-2fa', async (request, reply) => {
+fastify.post('/verify-google-2fa', async (request, reply) => {
   const { tempToken, twoFactorToken } = request.body;
   if (!tempToken || !twoFactorToken) {
     return reply.code(400).send({ error: 'Missing required tokens' });
