@@ -2,7 +2,7 @@ import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { oAuth2Client } from '../utils/g-client';
 
 export async function googleLoginRoute(fastify: FastifyInstance): Promise<void> {
-  fastify.get('/', async (
+  fastify.get('/login', async (
     _request: FastifyRequest,
     reply: FastifyReply
   ) => {

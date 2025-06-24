@@ -15,7 +15,7 @@ down:
 	$(DOCKER) down
 
 build:
-	$(DOCKER) build
+	$(DOCKER) build --no-cache
 
 logs:
 	$(DOCKER) logs -f auth

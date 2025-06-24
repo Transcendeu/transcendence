@@ -272,7 +272,7 @@ export class Menu {
 
         if (googleLoginBtn) {
             googleLoginBtn.addEventListener('click', () => {
-                window.location.href = '/api/auth/google';
+                window.location.href = '/api/auth/google/login';
             });
         }
 
