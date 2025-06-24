@@ -323,20 +323,25 @@ async initOnline(name: string, matchInfo: {gameId: string | null, role: string})
     };
 
     const sendInput = (() => {
-      let lastSendTime = 0;
+      const lastSendTime: Record<'player1' | 'player2', number> = {
+        player1: 0,
+        player2: 0
+      };
+
       return (role: 'player1' | 'player2', key: 'up' | 'down', state: 'press' | 'release') => {
         const now = Date.now();
-        if (state === 'release' || now - lastSendTime >= 50) {
+        if (state === 'release' || now - lastSendTime[role] >= 50) {
           socket.send(JSON.stringify({
             type: 'input',
             input: key,
             state,
             role
           }));
-          lastSendTime = now;
+          lastSendTime[role] = now;
         }
       };
     })();
+
 
     const onKeyChange = (e: KeyboardEvent, isKeyDown: boolean) => {
       if (e.code === KeyBindings.ready) {
