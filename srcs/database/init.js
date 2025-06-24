@@ -278,7 +278,7 @@ initDatabase()
     const start = async () => {
       try {
         await fastify.listen({
-          port: process.env.PORT || 5000,
+          port: process.env.DB_PORT || 5000,
           host: '0.0.0.0'
         });
         fastify.log.info(`Database service rodando em http://0.0.0.0:${process.env.PORT || 5000}`);

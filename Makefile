@@ -34,12 +34,20 @@ re: clean up
 
 
 #env file should look like
-# GOOGLE_CLIENT_ID=
-# GOOGLE_CLIENT_SECRET=
-# GOOGLE_CALLBACK_URL=
+# GOOGLE_CLIENT_ID=????
+# GOOGLE_CLIENT_SECRET=????
+# GOOGLE_CALLBACK_URL=????
 # NODE_ENV=development
 # VAULT_DEV_ROOT_TOKEN_ID=my-root-token
 # VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200
 # VAULT_TOKEN=my-root-token
-# JWT_SECRET=your_jwt_secret_key_here
-# JWT_REFRESH_SECRET=your_jwt_refresh_secret_key_here
+# JWT_SECRET=jwt_secret
+# JWT_REFRESH_SECRET=jwt_refresh
+# JWT_KEY=signing_key
+# JWT_VALUE=????
+# VAULT_ADDR=http://vault:8200
+# VAULT_TOKEN=root-token
+# VAULT_PORT=3082
+# AUTH_PORT=3005
+# DB_PORT=5000
+# DATABASE_URL=http://database:5000

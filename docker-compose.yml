@@ -10,7 +10,7 @@ services:
     networks:
       - transcendence_network
 
-  api:
+  vault-container:
     build: ./srcs/vault
     container_name: fastify-api
     env_file:
@@ -18,7 +18,7 @@ services:
     depends_on:
       - vault
     ports:
-      - "3001:3001"
+      - "3082:3082"  # testando local
     networks:
       - transcendence_network
 
@@ -40,7 +40,7 @@ services:
       context: ./srcs/auth
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - "3005:3005"
     env_file:
       - .env
     networks:

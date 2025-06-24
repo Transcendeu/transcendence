@@ -1,9 +1,9 @@
 import { Client } from '@litehex/node-vault';
 
-const vault = new Client({
-  endpoint: process.env.VAULT_ADDR || 'http://127.0.0.1:8200',
-  token: process.env.VAULT_TOKEN || 'my-root-token',
-});
+const endpoint = process.env.VAULT_ADDR;  // || 'http://0.0.0.0:8200';
+const token = process.env.VAULT_TOKEN;    // || 'root-token';
+
+const vault = new Client({ endpoint, token });
 
 export async function writeSecret(path: string, data: Record<string, any>): Promise<void> {
   await vault.write({
