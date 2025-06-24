@@ -98,7 +98,7 @@ export class Settings {
         if (setupButton) {
             setupButton.addEventListener('click', async () => {
                 try {
-                    const response = await fetch('/api/auth/setup-2fa', {
+                    const response = await fetch('/api/auth/2fa/setup', {
                         method: 'POST',
                         headers: {
                             'Authorization': `Bearer ${localStorage.getItem('access_token')}`
@@ -151,7 +151,7 @@ export class Settings {
         if (verifyButton && twoFactorToken) {
             verifyButton.addEventListener('click', async () => {
                 try {
-                    const response = await fetch('/api/auth/verify-2fa', {
+                    const response = await fetch('/api/auth/2fa/verify', {
                         method: 'POST',
                         headers: {
                             'Authorization': `Bearer ${localStorage.getItem('access_token')}`,

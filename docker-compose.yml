@@ -3,28 +3,22 @@ services:
   vault:
     image: hashicorp/vault:1.16
     container_name: vault
-    environment:
-      # Modo dev – NUNCA usar em produção!
-      VAULT_DEV_ROOT_TOKEN_ID: my-root-token
-      VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
-    cap_add:            # evita que o Vault seja swapado em disco
-      - IPC_LOCK
+    cap_add:
+      - IPC_LOCK  # Prevent Vault memory from being swapped to disk
     ports:
-      - "8200:8200"     # UI / API do Vault
+      - "8200:8200"
     networks:
       - transcendence_network
 
-  api:
+  vault-container:
     build: ./srcs/vault
-    container_name: fastify-api
-    environment:
-      VAULT_ADDR: http://vault:8200
-      VAULT_TOKEN: my-root-token
-      PORT: 3001
+    container_name: vault-container
+    env_file:
+      - .env
     depends_on:
       - vault
     ports:
-      - "3001:3001"
+      - "3082:3082"  # testando local
     networks:
       - transcendence_network
 
@@ -35,35 +29,20 @@ services:
     ports:
       - "5000:5000"
     volumes:
-      - ./srcs/database:/app
-      - ./data:/app/data
-      - /app/node_modules
-    environment:
-      - NODE_ENV=development
-      - PORT=5000
-      - JWT_SECRET=your_jwt_secret_key_here
-      - JWT_REFRESH_SECRET=your_jwt_refresh_secret_key_here
-    # env_file:
-    #   - ./srcs/database/.env
+      - ./database/persistent:/app/data  # TODO: make this the only persistent data directory
+    env_file:
+      - .env
     networks:
-      - transcendence_network 
+      - transcendence_network
+
   auth:
     build:
       context: ./srcs/auth
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
-    volumes:
-      - ./srcs/auth:/app
-      - /app/node_modules
-    environment:
-      - NODE_ENV=development
-      - PORT=3000
-      - DATABASE_URL=http://database:5000
-      - JWT_SECRET=your_jwt_secret_key_here
-      - JWT_REFRESH_SECRET=your_jwt_refresh_secret_key_here
+      - "3005:3005"
     env_file:
-      - ./srcs/auth/.env
+      - .env
     networks:
       - transcendence_network
 
@@ -78,7 +57,6 @@ services:
       - relay
     networks:
       - transcendence_network
-#    restart: on-failure
 
   frontend:
     build:
@@ -116,9 +94,8 @@ services:
     depends_on:
       - engine
     networks:
-    - transcendence_network
+      - transcendence_network
 
 networks:
   transcendence_network:
     driver: bridge
-    

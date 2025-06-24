@@ -451,7 +451,7 @@ function isValidState(state: string): state is 'press' | 'release' {
 }
 
 function pausePressed(event: GameEvent, state: GameState, gameId: string) {
-  if (event.role && event.player) {
+  if (event.role) {
     state.gameStatus = 'paused';
     // Reset inputs when pausing
     const game = games.get(gameId);
@@ -472,7 +472,7 @@ function resumePressed(event: GameEvent, state: GameState, gameId: string) {
     console.warn("Invalid resume sent from ", event.player, " with role ", event.role);
     return;
   }
-  if (event.role && event.player) {
+  if (event.role) {
     state.gameStatus = 'playing';
     const game = games.get(gameId);
     if (game) {

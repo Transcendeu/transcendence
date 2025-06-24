@@ -1,20 +1,32 @@
-FROM node:20-alpine
+# Stage 1: Build
+FROM node:20-alpine AS build
 
 # Set working directory
 WORKDIR /app
 
-# Copy dependency definitions first
-COPY package*.json ./
+COPY package*.json tsconfig.json ./
 
 # Install dependencies before copying other files
 RUN npm install
 
-# Now copy the rest of the app
-COPY . .
+COPY src ./src
 
-# Ensure env file is optional in build (mainly used in runtime)
-# No need to COPY .env explicitly if you use `env_file` in docker-compose
+RUN npm run build
 
-EXPOSE 3000
+RUN ls -la /app/dist
+
+# Stage 2: Runtime
+FROM node:20-alpine AS runtime
+
+WORKDIR /app
+
+#COPY --from=build /app/.env ./
+COPY --from=build /app/package*.json ./
+
+RUN npm ci --omit=dev
+
+COPY --from=build /app/dist ./dist
+
+EXPOSE 3005
 
 CMD ["npm", "start"]

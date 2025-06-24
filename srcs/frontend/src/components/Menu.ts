@@ -86,7 +86,7 @@ export class Menu {
                     if (verifyButton && tokenInput && errorDisplay) {
                         verifyButton.addEventListener('click', async () => {
                             try {
-                                const response = await fetch('/api/auth/verify-google-2fa', {
+                                const response = await fetch('/api/auth/google/2fa/verify', {
                                     method: 'POST',
                                     headers: {
                                         'Content-Type': 'application/json'
@@ -272,7 +272,7 @@ export class Menu {
 
         if (googleLoginBtn) {
             googleLoginBtn.addEventListener('click', () => {
-                window.location.href = '/api/auth/google';
+                window.location.href = '/api/auth/google/login';
             });
         }
 
