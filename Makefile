@@ -8,6 +8,11 @@ else
 	DOCKER=docker-compose
 endif
 
+all: setup up
+
+setup:
+	mkdir -p ./database/persistent
+
 up:
 	$(DOCKER) up -d
 
@@ -21,7 +26,7 @@ logs:
 	$(DOCKER) logs -f auth
 
 clean: down
-#	docker rmi transcendence-frontend:latest transcendence-auth:latest transcendence-web-nginx:latest transcendence-api-gateway:latest transcendence-relay:latest transcendence-engine:latest
+#	docker rmi transcendence-frontend:latest transcendence-auth:latest transcendence-web-nginx:latest transcendence-api-gateway:latest transcendence-relay:latest transcendence-engine:latest transcendence-database:latest
 	docker system prune -a
 	rm -rf srcs/vault/node_modules
 	rm -rf srcs/vault/dist
@@ -29,6 +34,9 @@ clean: down
 	rm -rf srcs/auth/database.sqlite
 	rm -rf srcs/frontend/node_modules
 	rm -rf srcs/frontend/dist
+
+fclean: clean
+	rm -rf ./database
 
 re: clean up
 

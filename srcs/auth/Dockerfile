@@ -18,7 +18,7 @@ FROM node:20-alpine AS runtime
 
 WORKDIR /app
 
-RUN apk update && apk add --no-cache curl jq
+RUN apk update && apk add --no-cache curl
 
 COPY --from=build /app/package*.json ./
 

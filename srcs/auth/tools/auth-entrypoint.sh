@@ -12,13 +12,6 @@ until curl -sf $VAULT_ADDR/v1/sys/health > /dev/null; do
   sleep 1
 done
 
-echo "===== DEBUG: Vault mounts (raw) token: $VAULT_TOKEN ====="
-curl -s -v -H "X-Vault-Token: $VAULT_TOKEN" "$VAULT_ADDR/v1/sys/mounts" -o vault_mounts_raw.json 2>&1 | tee /dev/stderr
-echo "===== DEBUG: Vault mounts (parsed) ====="
-cat vault_mounts_raw.json | jq
-echo "===== END DEBUG ====="
-
-
 if [ -z "$JWT_KEY" ] || [ -z "$JWT_VALUE" ]; then
   echo "ERROR: JWT_KEY or JWT_VALUE not set"
   kill $pid
