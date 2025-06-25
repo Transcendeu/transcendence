@@ -33,8 +33,8 @@ response=$(curl -s -w "%{http_code}" -o /dev/null -X POST http://localhost:$AUTH
 
 if [ "$response" -ne 200 ]; then
   echo "Failed to set secret, status code: $response"
-  # kill $pid
-  # exit 1
+  kill $pid
+  exit 1
 fi
 
 echo "Secret set successfully. Vault service running."

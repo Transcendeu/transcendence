@@ -26,7 +26,7 @@ const FRONTEND_URL = process.env.FRONTEND_URL || '*';
 export const app = Fastify({ logger: true });
 
 app.register(cors, {
-  origin: FRONTEND_URL || 'http://localhost:3000', // fallback seguro apenas em dev
+  origin: FRONTEND_URL || 'http://localhost:4001', // fallback seguro apenas em dev
   methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: [
     'Content-Type',
