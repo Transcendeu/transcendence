@@ -26,6 +26,7 @@ export class Router {
     }
 
     public async navigate(path: string): Promise<void> {
+        if (window.location.pathname === path) return;
         console.log('Navigating to path:', path);
         window.history.pushState({}, '', path);
         await this.handleRoute();

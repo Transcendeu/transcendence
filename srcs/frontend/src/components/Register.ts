@@ -75,8 +75,10 @@ export class Register {
                         body: JSON.stringify({ username, email, password: hashedPassword }),
                     });
 
+                    const registerResponse = await response.json();
+
                     if (!response.ok) {
-                        throw new Error('Registration failed');
+                        throw new Error(registerResponse.error || 'Registration failed');
                     }
 
                     // Automatically log in after successful registration

@@ -14,6 +14,11 @@ interface Match {
     round: number;
 }
 
+interface TournamentContext {
+    setManager: (manager: GameManager) => void;
+    cleanupManager: () => void;
+}
+
 export class LocalTournament {
     private container: HTMLElement;
     private router: Router;
@@ -22,11 +27,14 @@ export class LocalTournament {
     private currentMatch: number = 0;
     private currentRound: number = 1;
     private totalRounds: number = 0;
+    private context: TournamentContext;
+    
 
-    constructor(container: HTMLElement, router: Router) {
+    constructor(container: HTMLElement, router: Router, context: TournamentContext) {
         this.container = container;
         this.router = router;
         this.showPlayerSetup();
+        this.context = context;
     }
 
     private showPlayerSetup(): void {
@@ -283,9 +291,12 @@ export class LocalTournament {
             }, 1000);
         });
 
+
        const manager = new GameManager(gameContainer, (result) => {
-            // Extract winner from the result object
-            const winner = result!.matchWinner === 'player1' ? 1 : 2;
+            this.context.cleanupManager();
+            if (!result || typeof result.matchWinner !== 'string') return;
+
+            const winner = result.matchWinner === 'player1' ? 1 : 2;
             const winningPlayer = winner === 1 ? match.player1 : match.player2;
             const losingPlayer = winner === 1 ? match.player2 : match.player1;
             
@@ -322,6 +333,7 @@ export class LocalTournament {
                 this.showTournamentBracket();
             }
         });
+        this.context.setManager(manager);
         await manager.initLocal('', match.player1.name, match.player2.name);
     }
 
