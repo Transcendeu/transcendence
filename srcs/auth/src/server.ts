@@ -3,7 +3,7 @@ dotenv.config();
 
 import { app } from './app';
 
-const PORT = process.env.AUTH_PORT ? Number(process.env.AUTH_PORT) : 3005;
+const PORT = process.env.AUTH_PORT ? Number(process.env.AUTH_PORT) : 4001;
 
 const start = async () => {
   try {

@@ -1,5 +1,8 @@
-services:
+networks:
+  transcendence_network:
+    driver: bridge
 
+services:
   vault:
     image: hashicorp/vault:1.16
     container_name: vault
@@ -7,95 +10,81 @@ services:
       - IPC_LOCK  # Prevent Vault memory from being swapped to disk
     ports:
       - "8200:8200"
-    networks:
-      - transcendence_network
-
-  vault-container:
-    build: ./srcs/vault
-    container_name: vault-container
-    env_file:
-      - .env
-    depends_on:
-      - vault
-    ports:
-      - "3082:3082"  # testando local
-    networks:
-      - transcendence_network
-
-  database:
-    build:
-      context: ./srcs/database
-      dockerfile: Dockerfile
-    ports:
-      - "5000:5000"
-    volumes:
-      - ./database/persistent:/app/data  # TODO: make this the only persistent data directory
     env_file:
       - .env
     networks:
       - transcendence_network
+
+  # database:
+  #   build:
+  #     context: ./srcs/database
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "5000:5000"
+  #   volumes:
+  #     - ./database/persistent:/app/data  # TODO: make this the only persistent data directory
+  #   env_file:
+  #     - .env
+  #   networks:
+  #     - transcendence_network
 
   auth:
     build:
       context: ./srcs/auth
       dockerfile: Dockerfile
     ports:
-      - "3005:3005"
+      - "4001:4001"
     env_file:
       - .env
     networks:
       - transcendence_network
 
-  api-gateway:
-    build:
-      context: ./srcs/api_gateway
-      dockerfile: Dockerfile
-    ports:
-      - "80:80"
-    depends_on:
-      - auth
-      - relay
-    networks:
-      - transcendence_network
+  # api-gateway:
+  #   build:
+  #     context: ./srcs/api_gateway
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "80:80"
+  #   depends_on:
+  #     - auth
+  #     - relay
+  #   networks:
+  #     - transcendence_network
 
-  frontend:
-    build:
-      context: ./srcs/frontend
-      dockerfile: Dockerfile
-    networks:
-      - transcendence_network
+  # frontend:
+  #   build:
+  #     context: ./srcs/frontend
+  #     dockerfile: Dockerfile
+  #   networks:
+  #     - transcendence_network
 
-  web-nginx:
-    build:
-      context: ./srcs/web_nginx
-      dockerfile: Dockerfile
-    ports:
-      - "8080:8080"
-    depends_on:
-      - frontend
-    networks:
-      - transcendence_network
+  # web-nginx:
+  #   build:
+  #     context: ./srcs/web_nginx
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "8080:8080"
+  #   depends_on:
+  #     - frontend
+  #   networks:
+  #     - transcendence_network
 
-  engine:
-    build:
-      context: ./srcs/game/engine
-      dockerfile: Dockerfile
-    container_name: pong_engine
-    depends_on:
-      - frontend
-    networks:
-      - transcendence_network
+  # engine:
+  #   build:
+  #     context: ./srcs/game/engine
+  #     dockerfile: Dockerfile
+  #   container_name: pong_engine
+  #   depends_on:
+  #     - frontend
+  #   networks:
+  #     - transcendence_network
 
-  relay:
-    build:
-      context: ./srcs/game/relay
-      dockerfile: Dockerfile
-    container_name: pong_relay
-    depends_on:
-      - engine
-    networks:
-      - transcendence_network
-
-networks:
-  transcendence_network:
-    driver: bridge
+  # relay:
+  #   build:
+  #     context: ./srcs/game/relay
+  #     dockerfile: Dockerfile
+  #   container_name: pong_relay
+  #   depends_on:
+  #     - engine
+  #   networks:
+  #     - transcendence_network
