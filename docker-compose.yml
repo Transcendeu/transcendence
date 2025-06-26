@@ -1,5 +1,8 @@
-services:
+networks:
+  transcendence_network:
+    driver: bridge
 
+services:
   vault:
     image: hashicorp/vault:1.16
     container_name: vault
@@ -7,18 +10,8 @@ services:
       - IPC_LOCK  # Prevent Vault memory from being swapped to disk
     ports:
       - "8200:8200"
-    networks:
-      - transcendence_network
-
-  vault-container:
-    build: ./srcs/vault
-    container_name: vault-container
     env_file:
       - .env
-    depends_on:
-      - vault
-    ports:
-      - "3082:3082"  # testando local
     networks:
       - transcendence_network
 
@@ -40,7 +33,7 @@ services:
       context: ./srcs/auth
       dockerfile: Dockerfile
     ports:
-      - "3005:3005"
+      - "4001:4001"
     env_file:
       - .env
     networks:
@@ -95,7 +88,3 @@ services:
       - engine
     networks:
       - transcendence_network
-
-networks:
-  transcendence_network:
-    driver: bridge

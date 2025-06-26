@@ -1,14 +1,13 @@
 #!/bin/sh
 
-echo "Starting Vault service..."
+echo "Starting Auth service..."
 
 node dist/server.js &
 
-# PID do servidor
 pid=$!
 
 # Aguarda o servidor ficar disponível
-until curl -sf http://vault:8200/v1/sys/health > /dev/null; do
+until curl -sf $VAULT_ADDR/v1/sys/health > /dev/null; do
   echo "Waiting for Vault server to be ready..."
   sleep 1
 done
@@ -19,10 +18,17 @@ if [ -z "$JWT_KEY" ] || [ -z "$JWT_VALUE" ]; then
   exit 1
 fi
 
-response=$(curl -s -w "%{http_code}" -o /dev/null -X POST http://localhost:3082/secrets/jwt \
+response=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$VAULT_ADDR/v1/secret/data/jwt" \
+  -H "X-Vault-Token: $VAULT_TOKEN" \
   -H "Content-Type: application/json" \
-  -d "{\"username\": \"${JWT_KEY}\", \"password\": \"${JWT_VALUE}\"}"
-  )
+  -d '{
+    "data": {
+      "username": "'"$JWT_KEY"'",
+      "password": "'"$JWT_VALUE"'"
+    }
+  }')
+
+echo "Vault response code: $response"
 
 if [ "$response" -ne 200 ]; then
   echo "Failed to set secret, status code: $response"

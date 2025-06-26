@@ -90,7 +90,7 @@ async initOnline(name: string, matchInfo: {gameId: string | null, role: string})
     this.currentRenderer.showGameControls();
   }
 
-  private cleanup() {
+  public cleanup() {
     const backButton = document.getElementById('backButton');
     if (backButton) {
         backButton.removeEventListener('click', this.handleBackButtonClick);
@@ -109,7 +109,7 @@ async initOnline(name: string, matchInfo: {gameId: string | null, role: string})
         this.activeSocket = null;
     }
     if (this.wrapper && this.wrapper.parentNode) {
-      this.wrapper.parentNode.removeChild(this.wrapper);
+      this.wrapper.remove();
     }
     if (this.gameEndScreen) {
       this.gameEndScreen.remove();

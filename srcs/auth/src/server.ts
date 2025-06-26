@@ -3,12 +3,13 @@ dotenv.config();
 
 import { app } from './app';
 
-const PORT = process.env.AUTH_PORT ? Number(process.env.AUTH_PORT) : 3005;
+const PORT = process.env.AUTH_PORT ? Number(process.env.AUTH_PORT) : 4001;
 
 const start = async () => {
+  const server_host = '0.0.0.0';
   try {
-    await app.listen({ port: PORT, host: '0.0.0.0' });
-    console.log(`Server running at http://vault-container:${PORT}`);
+    await app.listen({ port: PORT, host: server_host });
+    console.log(`Server running at ${server_host}:${PORT}`);
   } catch (err) {
     app.log.error(err);
     process.exit(1);

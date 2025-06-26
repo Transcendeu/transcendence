@@ -12,6 +12,8 @@ import { MatchFinder } from './components/game-component/match-finder';
 export class App {
     private container: HTMLElement;
     private router: Router;
+    private gameManager: GameManager | null = null;
+
 
     constructor(container: HTMLElement) {
         this.container = container;
@@ -19,6 +21,7 @@ export class App {
         this.setupRoutes();
         this.setupNotFound();
         this.showInitialScreen();
+        this.gameManager = null;
     }
 
     private setupRoutes(): void {
@@ -57,9 +60,14 @@ export class App {
         });
 
         this.router.addRoute('/game/local-tournament', () => {
+            this.cleanupGameManager();
             console.log('Rendering local tournament route');
             this.container.innerHTML = '';
-            new LocalTournament(this.container, this.router);
+            this.router.navigate('/game/local-tournament');
+            new LocalTournament(this.container, this.router, {
+                setManager: this.setGameManager,
+                cleanupManager: this.cleanupGameManager
+            });
         });
 
         // Protected routes
@@ -93,12 +101,12 @@ export class App {
         return new Promise(async (resolve) => {
             const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
             const name = userData.username ?? '';
-            let manager: GameManager | null = new GameManager(this.container, () => {
+            this.gameManager = new GameManager(this.container, () => {
                 this.router.navigate('/');
                 resolve();
-                manager = null;
+                this.cleanupGameManager();
             });
-            await manager.initLocal(name);
+            await this.gameManager.initLocal(name);
         });
     }
 
@@ -111,12 +119,12 @@ export class App {
             const matchFinder = new MatchFinder(this.container);
             const matchInfo: { gameId: string | null, role: MatchRole } = await matchFinder.findMatch(name);
 
-            let manager: GameManager | null = new GameManager(this.container, () => {
+            this.gameManager = new GameManager(this.container, () => {
                 this.router.navigate('/');
                 resolve();
-                manager = null;
+                this.cleanupGameManager();
             });
-            await manager.initOnline(name, matchInfo);
+            await this.gameManager.initOnline(name, matchInfo);
         });
     }
 
@@ -140,4 +148,15 @@ export class App {
             this.router.navigate(currentPath);
         }
     }
-} 
+
+    private setGameManager = (manager: GameManager) => {
+        this.gameManager = manager;
+    };
+
+    private cleanupGameManager = () => {
+        if (this.gameManager) {
+            this.gameManager.cleanup();
+            this.gameManager = null;
+        }
+    };
+}

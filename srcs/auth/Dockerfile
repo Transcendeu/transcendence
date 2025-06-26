@@ -1,12 +1,10 @@
 # Stage 1: Build
 FROM node:20-alpine AS build
 
-# Set working directory
 WORKDIR /app
 
 COPY package*.json tsconfig.json ./
 
-# Install dependencies before copying other files
 RUN npm install
 
 COPY src ./src
@@ -20,13 +18,17 @@ FROM node:20-alpine AS runtime
 
 WORKDIR /app
 
-#COPY --from=build /app/.env ./
+RUN apk update && apk add --no-cache curl
+
 COPY --from=build /app/package*.json ./
 
 RUN npm ci --omit=dev
 
 COPY --from=build /app/dist ./dist
 
-EXPOSE 3005
+COPY tools/auth-entrypoint.sh ./tools/auth-entrypoint.sh
+RUN chmod 755 /app/tools/auth-entrypoint.sh
 
-CMD ["npm", "start"]
+EXPOSE 4001
+
+CMD ["sh", "tools/auth-entrypoint.sh"]

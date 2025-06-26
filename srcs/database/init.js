@@ -113,7 +113,7 @@ initDatabase()
           function (err) {
             if (err) {
               if (err.message.includes('UNIQUE constraint failed')) {
-                reply.code(400).send({ error: 'Username ou e-mail já existe' });
+                reply.code(400).send({ error: 'Nome de usuário ou e-mail já existente' });
                 return reject(err);
               }
               reply.code(500).send({ error: 'Erro no banco de dados' });
@@ -132,7 +132,7 @@ initDatabase()
       if (!emailOrUsername) {
         return reply
         .code(400)
-        .send({ error: 'Parâmetro emailOrUsername é obrigatorio' });
+        .send({ error: 'Parâmetro email e nome de usuário são obrigatórios' });
       }
 
       return new Promise((resolve, reject) => {

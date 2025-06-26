@@ -19,4 +19,4 @@ Thumbs.db
 *.log
 
 # Arquivos de ambiente locais (caso tenha .env, evitar subir segredo)
-.env
+# .env

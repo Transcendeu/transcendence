@@ -8,6 +8,11 @@ else
 	DOCKER=docker-compose
 endif
 
+all: setup up
+
+setup:
+	mkdir -p ./database/persistent
+
 up:
 	$(DOCKER) up -d
 
@@ -21,7 +26,7 @@ logs:
 	$(DOCKER) logs -f auth
 
 clean: down
-#	docker rmi transcendence-frontend:latest transcendence-auth:latest transcendence-web-nginx:latest transcendence-api-gateway:latest transcendence-relay:latest transcendence-engine:latest
+#	docker rmi transcendence-frontend:latest transcendence-auth:latest transcendence-web-nginx:latest transcendence-api-gateway:latest transcendence-relay:latest transcendence-engine:latest transcendence-database:latest
 	docker system prune -a
 	rm -rf srcs/vault/node_modules
 	rm -rf srcs/vault/dist
@@ -30,24 +35,26 @@ clean: down
 	rm -rf srcs/frontend/node_modules
 	rm -rf srcs/frontend/dist
 
+fclean: clean
+	rm -rf ./database
+
 re: clean up
 
 
 #env file should look like
-# GOOGLE_CLIENT_ID=????
-# GOOGLE_CLIENT_SECRET=????
-# GOOGLE_CALLBACK_URL=????
+# GOOGLE_CLIENT_ID=
+# GOOGLE_CLIENT_SECRET=
+# GOOGLE_CALLBACK_URL=
 # NODE_ENV=development
-# VAULT_DEV_ROOT_TOKEN_ID=my-root-token
-# VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200
-# VAULT_TOKEN=my-root-token
 # JWT_SECRET=jwt_secret
 # JWT_REFRESH_SECRET=jwt_refresh
 # JWT_KEY=signing_key
-# JWT_VALUE=????
+# JWT_VALUE=8b1d0fcfa4f6b0e8d63f6ac68f31a9c6d6d94f3a98b74c7c21ec5f4a02dd94a8
+# VAULT_DEV_ROOT_TOKEN_ID=my-root-token
+# VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200
+# VAULT_TOKEN=my-root-token
 # VAULT_ADDR=http://vault:8200
-# VAULT_TOKEN=root-token
-# VAULT_PORT=3082
-# AUTH_PORT=3005
+# AUTH_PORT=4001
 # DB_PORT=5000
 # DATABASE_URL=http://database:5000
+# VAULT_PORT=3082 this is not used anywhere

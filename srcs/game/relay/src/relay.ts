@@ -320,8 +320,8 @@ fastify.patch<{ Params: { id: string }, Body: { local: boolean } }>('/session/:i
   reply.send({ ok: true });
 });
 
-await fastify.listen({ port: 3333, host: '0.0.0.0' });
-console.log('WS Relay running on :3333');
+await fastify.listen({ port: 4002, host: '0.0.0.0' });
+console.log('WS Relay running on :4002');
 
 function normalizeInput(dataType: string, input: string): string {
   if (dataType !== 'input') return input;
