@@ -110,10 +110,6 @@ async initOnline(name: string, matchInfo: {gameId: string | null, role: string})
     }
     if (this.wrapper && this.wrapper.parentNode) {
       this.wrapper.remove();
-      console.log('Removing wrapper:', this.wrapper);
-console.log('Remaining root children:', this.rootContainer.children);
-console.log('Does #name-player1 still exist?', !!document.getElementById('name-player1'));
-
     }
     if (this.gameEndScreen) {
       this.gameEndScreen.remove();
