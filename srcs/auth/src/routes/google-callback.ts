@@ -1,6 +1,6 @@
-import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { oAuth2Client } from '../utils/g-client';
-import jwt from 'jsonwebtoken';
+import { signJwt, signRefreshJwt } from '../utils/jwt';
 
 const DB_URL = process.env.DATABASE_URL || 'http://database:5000';
 
@@ -26,11 +26,9 @@ export async function googleCallbackRoute(fastify: FastifyInstance) {
       }
 
       try {
-        // 1) Troca o code pelo token do Google
         const { tokens } = await oAuth2Client.getToken(code);
         oAuth2Client.setCredentials(tokens);
 
-        // 2) Pega informações do perfil Google
         const userInfoRes = await oAuth2Client.request({
           url: 'https://www.googleapis.com/oauth2/v2/userinfo',
         });
@@ -43,7 +41,6 @@ export async function googleCallbackRoute(fastify: FastifyInstance) {
         let username: string | undefined;
         let twoFactorEnabled = false;
 
-        // 3) Tenta buscar usuário existente pelo email
         try {
           const resp = await fetch(
             `${DB_URL}/users?emailOrUsername=${encodeURIComponent(userInfo.email)}`
@@ -58,25 +55,21 @@ export async function googleCallbackRoute(fastify: FastifyInstance) {
           } else if (resp.status !== 404) {
             throw new Error(`Unexpected response ${resp.status}`);
           }
-          // Se 404, usuário não existe — seguirá para criar
         } catch (err) {
-          throw err; // vai para catch principal
+          throw err;
         }
 
-        // 4) Se não encontrou usuário, cria novo
         if (!userId) {
           const baseUsername = userInfo.name || userInfo.email.split('@')[0];
           let uniqueUsername = baseUsername;
           let counter = 1;
 
-          // Loop para evitar conflito de username
           while (true) {
             try {
               const conflictResp = await fetch(
                 `${DB_URL}/users?emailOrUsername=${encodeURIComponent(uniqueUsername)}`
               );
               if (conflictResp.status === 404) {
-                // Nome disponível
                 break;
               }
               if (!conflictResp.ok) {
@@ -86,20 +79,18 @@ export async function googleCallbackRoute(fastify: FastifyInstance) {
               if (!conflictUser.id) break;
               uniqueUsername = `${baseUsername}${counter++}`;
             } catch (conflictErr) {
-              // Se erro for 404, nome disponível
               if ((conflictErr as any).response?.status === 404) break;
               throw conflictErr;
             }
           }
 
-          // Cria novo usuário
           const createResp = await fetch(`${DB_URL}/users`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               username: uniqueUsername,
               email: userInfo.email,
-              password: 'google-auth', // placeholder
+              password: 'google-auth',
             }),
           });
           if (!createResp.ok) {
@@ -108,16 +99,10 @@ export async function googleCallbackRoute(fastify: FastifyInstance) {
           const newUser = (await createResp.json()) as User;
           userId = newUser.id;
           username = newUser.username;
-          // twoFactorEnabled permanece false
         }
 
-        // 5) Se 2FA ativo, gera tempToken e redireciona para frontend
         if (twoFactorEnabled) {
-          const tempToken = jwt.sign(
-            { id: userId, email: userInfo.email, temp: true },
-            process.env.JWT_SECRET!,
-            { expiresIn: '5m' }
-          );
+          const tempToken = await signJwt({ id: userId, email: userInfo.email, temp: true });
           const redirectData = {
             requiresTwoFactor: true,
             tempToken,
@@ -128,17 +113,8 @@ export async function googleCallbackRoute(fastify: FastifyInstance) {
           return reply.redirect(`/?data=${base64Data}`);
         }
 
-        // 6) Se não tiver 2FA, gera tokens finais e salva
-        const accessToken = jwt.sign(
-          { id: userId, email: userInfo.email },
-          process.env.JWT_SECRET!,
-          { expiresIn: '15m' }
-        );
-        const refreshToken = jwt.sign(
-          { id: userId },
-          process.env.JWT_REFRESH_SECRET!,
-          { expiresIn: '7d' }
-        );
+        const accessToken = await signJwt({ id: userId, email: userInfo.email });
+        const refreshToken = await signRefreshJwt({ id: userId });
         const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
         const authTokenResp = await fetch(`${DB_URL}/auth-tokens`, {
@@ -156,7 +132,6 @@ export async function googleCallbackRoute(fastify: FastifyInstance) {
           throw new Error('Failed to save auth tokens');
         }
 
-        // 7) Prepara dados e redireciona para front
         const userData = {
           id: userId,
           email: userInfo.email,

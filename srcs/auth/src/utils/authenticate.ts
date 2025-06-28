@@ -1,8 +1,8 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import jwt, { JwtPayload } from 'jsonwebtoken';
+import { verifyJwt } from './jwt';
 
 interface AuthenticatedRequest extends FastifyRequest {
-  user?: string | JwtPayload;
+  user?: any;
 }
 
 export const authenticateToken = async (
@@ -17,11 +17,7 @@ export const authenticateToken = async (
       throw new Error('Access token required');
     }
 
-    if (!process.env.JWT_SECRET) {
-      throw new Error('JWT_SECRET environment variable is not set');
-    }
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = await verifyJwt(token);
     request.user = decoded;
   } catch (err: any) {
     if (err.name === 'TokenExpiredError') {
@@ -29,7 +25,7 @@ export const authenticateToken = async (
     } else if (err.name === 'JsonWebTokenError') {
       reply.code(401).send({ error: 'Invalid token' });
     } else {
-      reply.code(401).send({ error: err.message });
+      reply.code(401).send({ error: err.message || 'Unauthorized' });
     }
   }
 };
