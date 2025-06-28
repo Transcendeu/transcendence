@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import jwt from 'jsonwebtoken';
 import speakeasy from 'speakeasy';
+import { signJwt, signRefreshJwt, verifyJwt } from '../utils/jwt';
 
 const DB_SERVICE_URL = process.env.DATABASE_URL || 'http://database:5000';
 
@@ -17,7 +17,7 @@ interface User {
 }
 
 export async function google2faVerifyRoute(fastify: FastifyInstance) {
-  fastify.post('/verify-2fa', async (
+  fastify.post('/verify', async (
       request: FastifyRequest<{ Body: VerifyGoogle2faBody }>,
       reply: FastifyReply
     ) => {
@@ -30,10 +30,7 @@ export async function google2faVerifyRoute(fastify: FastifyInstance) {
       // 1) Verifica assinatura do tempToken
       let decoded: { email: string; id: string };
       try {
-        decoded = jwt.verify(tempToken, process.env.JWT_SECRET!) as {
-          email: string;
-          id: string;
-        };
+        decoded = await verifyJwt(tempToken) as { email: string; id: string };
       } catch (err) {
         return reply.code(400).send({ error: 'Invalid temporary token' });
       }
@@ -73,16 +70,8 @@ export async function google2faVerifyRoute(fastify: FastifyInstance) {
       }
 
       // 5) Gera os tokens finais
-      const accessToken = jwt.sign(
-        { id: user.id, email: user.email },
-        process.env.JWT_SECRET!,
-        { expiresIn: '15m' }
-      );
-      const refreshToken = jwt.sign(
-        { id: user.id },
-        process.env.JWT_REFRESH_SECRET!,
-        { expiresIn: '7d' }
-      );
+      const accessToken = await signJwt({ id: user.id, email: user.email });
+      const refreshToken = await signRefreshJwt({ id: user.id });
       const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
       // 6) Persiste no database-service usando fetch POST

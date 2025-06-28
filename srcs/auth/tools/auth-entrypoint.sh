@@ -5,7 +5,7 @@ echo "Starting Auth service..."
 node dist/server.js &
 pid=$!
 
-# Espera Vault estar disponível
+# Espera Vault estar disponível e inicializado
 until status_json=$(curl -s $VAULT_ADDR/v1/sys/health 2>/dev/null) && \
       initialized=$(echo "$status_json" | jq -r '.initialized') && \
       [ "$initialized" = "true" ]; do
@@ -26,9 +26,9 @@ if [ "$sealed" = "true" ]; then
   echo "Vault unsealed."
 fi
 
-# Coloca segredo no Vault
-if [ -z "$JWT_KEY" ] || [ -z "$JWT_VALUE" ]; then
-  echo "ERROR: JWT_KEY or JWT_VALUE not set"
+# Coloca segredo no Vault (usando o mesmo caminho 'jwt' para as duas chaves)
+if [ -z "$JWT_KEY" ] || [ -z "$JWT_VALUE" ] || [ -z "$JWT_REFRESH_KEY" ] || [ -z "$JWT_REFRESH_VALUE" ]; then
+  echo "ERROR: JWT_KEY, JWT_VALUE, JWT_REFRESH_KEY or JWT_REFRESH_VALUE not set"
   kill $pid
   exit 1
 fi
@@ -38,8 +38,8 @@ response=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$VAULT_ADDR/v1/secret
   -H "Content-Type: application/json" \
   -d '{
     "data": {
-      "username": "'"$JWT_KEY"'",
-      "password": "'"$JWT_VALUE"'"
+      "'"$JWT_KEY"'": "'"$JWT_VALUE"'",
+      "'"$JWT_REFRESH_KEY"'": "'"$JWT_REFRESH_VALUE"'"
     }
   }')
 
@@ -51,6 +51,6 @@ if [ "$response" -ne 200 ]; then
   exit 1
 fi
 
-echo "Secret set successfully. Vault service running."
+echo "Token secret set successfully. Vault service running."
 
 wait $pid

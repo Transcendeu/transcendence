@@ -7,9 +7,13 @@ services:
     image: hashicorp/vault:1.16
     container_name: vault
     cap_add:
-      - IPC_LOCK  # Prevent Vault memory from being swapped to disk
+      - IPC_LOCK
     ports:
       - "8200:8200"
+    volumes:
+      - ./vault/data:/vault/data:Z                          # persistência de dados
+      - ./vault/vault.hcl:/vault/config/vault.hcl:ro,Z      # configuração do Vault
+    command: vault server -config=/vault/config/vault.hcl
     env_file:
       - .env
     networks:

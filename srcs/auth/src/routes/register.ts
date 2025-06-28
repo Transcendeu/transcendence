@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
+import { signJwt, signRefreshJwt } from '../utils/jwt';
 
 interface RegisterBody {
   username: string;
@@ -30,15 +30,13 @@ export async function registerRoute(fastify: FastifyInstance): Promise<void> {
     }
 
     try {
-      // Hash da senha (recomendado fazer no backend)
+      // 1) Hash da senha
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      // 1) Cria usuário no DB-service
+      // 2) Criação do usuário no DB-service
       const createUserRes = await fetch(`${DB_SERVICE_URL}/users`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           username,
           email,
@@ -54,32 +52,17 @@ export async function registerRoute(fastify: FastifyInstance): Promise<void> {
 
       const newUser: User = await createUserRes.json();
 
-      if (!process.env.JWT_SECRET || !process.env.JWT_REFRESH_SECRET) {
-        return reply.code(500).send({ error: 'JWT secrets not configured' });
-      }
-
-      // 2) Gera tokens
-      const accessToken = jwt.sign(
-        { id: newUser.id, email: newUser.email },
-        process.env.JWT_SECRET,
-        { expiresIn: '15m' }
-      );
-
-      const refreshToken = jwt.sign(
-        { id: newUser.id },
-        process.env.JWT_REFRESH_SECRET,
-        { expiresIn: '7d' }
-      );
+      // 3) Geração de tokens via Vault
+      const accessToken = await signJwt({ id: newUser.id, email: newUser.email });
+      const refreshToken = await signRefreshJwt({ id: newUser.id });
 
       const expiresAt = new Date();
       expiresAt.setMinutes(expiresAt.getMinutes() + 15);
 
-      // 3) Persiste tokens no DB-service
+      // 4) Armazenamento dos tokens
       await fetch(`${DB_SERVICE_URL}/auth-tokens`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_id: newUser.id,
           access_token: accessToken,

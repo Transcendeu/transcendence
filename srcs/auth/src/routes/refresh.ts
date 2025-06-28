@@ -1,5 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import jwt from 'jsonwebtoken';
+import { signJwt, signRefreshJwt, verifyRefreshJwt } from '../utils/jwt';
 
 const DB_SERVICE_URL = process.env.DATABASE_URL || 'http://database:5000';
 
@@ -24,13 +24,9 @@ export async function refreshRoute(fastify: FastifyInstance) {
       return reply.code(401).send({ error: 'Refresh token required' });
     }
 
-    if (!process.env.JWT_REFRESH_SECRET) {
-      return reply.code(500).send({ error: 'JWT_REFRESH_SECRET environment variable is not set' });
-    }
-
     let decoded: any;
     try {
-      decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+      decoded = await verifyRefreshJwt(refreshToken);
     } catch (err: any) {
       if (err.name === 'TokenExpiredError') {
         return reply.code(401).send({ error: 'Refresh token has expired' });
@@ -67,17 +63,9 @@ export async function refreshRoute(fastify: FastifyInstance) {
 
       const authId = authRecords[0].id;
 
-      // 3) Gera novos tokens
-      const newAccessToken = jwt.sign(
-        { id: decoded.id, email: decoded.email },
-        process.env.JWT_SECRET as string,
-        { expiresIn: '15m' }
-      );
-      const newRefreshToken = jwt.sign(
-        { id: decoded.id },
-        process.env.JWT_REFRESH_SECRET as string,
-        { expiresIn: '7d' }
-      );
+      // 3) Gera novos tokens usando os utilitários
+      const newAccessToken = await signJwt({ id: decoded.id, email: decoded.email });
+      const newRefreshToken = await signRefreshJwt({ id: decoded.id });
 
       const newExpiresAt = new Date();
       newExpiresAt.setMinutes(newExpiresAt.getMinutes() + 15);
