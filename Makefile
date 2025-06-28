@@ -41,20 +41,18 @@ fclean: clean
 re: clean up
 
 
-#env file should look like
-# GOOGLE_CLIENT_ID=
-# GOOGLE_CLIENT_SECRET=
-# GOOGLE_CALLBACK_URL=
+# env file should look like
+# GOOGLE_CLIENT_ID=xxx
+# GOOGLE_CLIENT_SECRET=xxx
+# GOOGLE_CALLBACK_URL='http://localhost/api/auth/google/callback'
 # NODE_ENV=development
-# JWT_SECRET=jwt_secret
-# JWT_REFRESH_SECRET=jwt_refresh
-# JWT_KEY=signing_key
-# JWT_VALUE=8b1d0fcfa4f6b0e8d63f6ac68f31a9c6d6d94f3a98b74c7c21ec5f4a02dd94a8
-# VAULT_DEV_ROOT_TOKEN_ID=my-root-token
-# VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200
-# VAULT_TOKEN=my-root-token
-# VAULT_ADDR=http://vault:8200
 # AUTH_PORT=4001
 # DB_PORT=5000
 # DATABASE_URL=http://database:5000
-# VAULT_PORT=3082 this is not used anywhere
+# JWT_KEY=signing_key
+# JWT_VALUE=secret
+# JWT_REFRESH_KEY=signing_refresh_key
+# JWT_REFRESH_VALUE=refresh_secret
+# VAULT_ADDR=http://vault:8200
+# VAULT_TOKEN=xxx
+# VAULT_UNSEAL_KEY=xxx
