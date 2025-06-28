@@ -26,14 +26,14 @@ logs:
 	$(DOCKER) logs -f auth
 
 clean: down
-#	docker rmi transcendence-frontend:latest transcendence-auth:latest transcendence-web-nginx:latest transcendence-api-gateway:latest transcendence-relay:latest transcendence-engine:latest transcendence-database:latest
-	docker system prune -a
-	rm -rf srcs/vault/node_modules
-	rm -rf srcs/vault/dist
-	rm -rf srcs/auth/node_modules
-	rm -rf srcs/auth/database.sqlite
-	rm -rf srcs/frontend/node_modules
-	rm -rf srcs/frontend/dist
+	docker rmi transcendence-frontend:latest transcendence-auth:latest transcendence-web-nginx:latest transcendence-api-gateway:latest transcendence-relay:latest transcendence-engine:latest transcendence-database:latest
+# docker system prune -a
+# rm -rf srcs/vault/node_modules
+# rm -rf srcs/vault/dist
+# rm -rf srcs/auth/node_modules
+# rm -rf srcs/auth/database.sqlite
+# rm -rf srcs/frontend/node_modules
+# rm -rf srcs/frontend/dist
 
 fclean: clean
 	rm -rf ./database

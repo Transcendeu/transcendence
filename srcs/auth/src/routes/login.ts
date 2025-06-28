@@ -1,100 +1,126 @@
-import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { signJwt, signRefreshJwt, verifyRefreshJwt } from '../utils/jwt';
+import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import bcrypt from 'bcrypt';
+import speakeasy from 'speakeasy';
+import { signJwt, signRefreshJwt } from '../utils/jwt';
+
+interface LoginBody {
+  username: string;
+  password: string;
+  twoFactorToken?: string;
+}
+
+interface User {
+  id: string;
+  username: string;
+  email: string;
+  password: string; // hash salvo no banco
+  two_factor_enabled: boolean;
+  two_factor_secret?: string;
+}
 
 const DB_SERVICE_URL = process.env.DATABASE_URL || 'http://database:5000';
 
-interface AuthTokenRecord {
-  id: string;
-  user_id: string;
-  access_token: string;
-  refresh_token: string;
-  expires_at: string;
-  revoked: boolean;
-  auth_provider: string;
-}
-
-export async function refreshRoute(fastify: FastifyInstance) {
-  fastify.post('/refresh', async (
-    request: FastifyRequest<{ Body: { refreshToken?: string } }>,
+export async function loginRoute(fastify: FastifyInstance): Promise<void> {
+  fastify.post('/login', async (
+    request: FastifyRequest<{ Body: LoginBody }>,
     reply: FastifyReply
   ) => {
-    const { refreshToken } = request.body;
+    const { username, password, twoFactorToken } = request.body;
 
-    if (!refreshToken) {
-      return reply.code(401).send({ error: 'Refresh token required' });
-    }
-
-    let decoded: any;
-    try {
-      decoded = await verifyRefreshJwt(refreshToken);
-    } catch (err: any) {
-      if (err.name === 'TokenExpiredError') {
-        return reply.code(401).send({ error: 'Refresh token has expired' });
-      }
-      if (err.name === 'JsonWebTokenError') {
-        return reply.code(401).send({ error: 'Invalid refresh token' });
-      }
-      return reply.code(500).send({ error: 'Error processing refresh token' });
+    if (!username || !password) {
+      return reply.code(400).send({ error: 'Username/Email and password are required' });
     }
 
     try {
-      // 2) Busca o registro ativo no database-service
-      const queryParams = new URLSearchParams({
-        user_id: decoded.id,
-        refresh_token: refreshToken,
-        revoked: 'false'
-      });
-
-      const res = await fetch(`${DB_SERVICE_URL}/auth-tokens?${queryParams.toString()}`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' }
-      });
-
-      if (!res.ok) {
-        request.log.error('Error fetching auth-tokens:', await res.text());
-        return reply.code(500).send({ error: 'Error checking existing auth record' });
+      // 1) Busca o usuário no DB-service
+      const userRes = await fetch(`${DB_SERVICE_URL}/users?emailOrUsername=${encodeURIComponent(username)}`);
+      if (userRes.status === 404) {
+        return reply.code(401).send({ error: 'Invalid credentials' });
+      }
+      if (!userRes.ok) {
+        return reply.code(500).send({ error: 'Error fetching user' });
       }
 
-      const authRecords: AuthTokenRecord[] = await res.json();
+      const userData: User[] = await userRes.json();
+      const foundUser = Array.isArray(userData) ? userData[0] : userData;
 
-      if (!authRecords.length) {
-        return reply.code(401).send({ error: 'Refresh token has been revoked or not found' });
+      if (!foundUser) {
+        return reply.code(401).send({ error: 'Invalid credentials' });
       }
 
-      const authId = authRecords[0].id;
+      // 2) Verifica senha
+      const valid = await bcrypt.compare(password, foundUser.password);
+      if (!valid) {
+        return reply.code(401).send({ error: 'Invalid credentials' });
+      }
 
-      // 3) Gera novos tokens usando os utilitários
-      const newAccessToken = await signJwt({ id: decoded.id, email: decoded.email });
-      const newRefreshToken = await signRefreshJwt({ id: decoded.id });
+      // 3) 2FA (se habilitado)
+      if (foundUser.two_factor_enabled) {
+        if (!twoFactorToken) {
+          return reply.code(403).send({ error: '2FA token required', requiresTwoFactor: true });
+        }
 
-      const newExpiresAt = new Date();
-      newExpiresAt.setMinutes(newExpiresAt.getMinutes() + 15);
+        const verified = speakeasy.totp.verify({
+          secret: foundUser.two_factor_secret || '',
+          encoding: 'base32',
+          token: twoFactorToken
+        });
 
-      // 4) Atualiza o registro no database-service
-      const patchRes = await fetch(`${DB_SERVICE_URL}/auth-tokens/${authId}`, {
+        if (!verified) {
+          return reply.code(401).send({ error: 'Invalid 2FA token' });
+        }
+      }
+
+      // 4) Gera tokens com seu módulo JWT
+      const accessToken = await signJwt({ id: foundUser.id, email: foundUser.email });
+      const refreshToken = await signRefreshJwt({ id: foundUser.id });
+
+      const expiresAt = new Date();
+      expiresAt.setMinutes(expiresAt.getMinutes() + 15);
+
+      // 5) Persiste tokens no DB-service
+      const patchRes = await fetch(`${DB_SERVICE_URL}/auth-tokens/${foundUser.id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({
-          access_token: newAccessToken,
-          refresh_token: newRefreshToken,
-          expires_at: newExpiresAt.toISOString()
+          access_token: accessToken,
+          refresh_token: refreshToken,
+          expires_at: expiresAt.toISOString()
         })
       });
 
+      // se PATCH falhar, tenta criar novo registro
       if (!patchRes.ok) {
-        request.log.error('Error updating auth record:', await patchRes.text());
-        return reply.code(500).send({ error: 'Error saving new tokens' });
+        await fetch(`${DB_SERVICE_URL}/auth-tokens`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            user_id: foundUser.id,
+            access_token: accessToken,
+            refresh_token: refreshToken,
+            expires_at: expiresAt.toISOString(),
+            auth_provider: 'local'
+          })
+        });
       }
 
-      // 5) Retorna os novos tokens
-      return {
-        accessToken: newAccessToken,
-        refreshToken: newRefreshToken
-      };
+      return reply.send({
+        accessToken,
+        refreshToken,
+        user: {
+          id: foundUser.id,
+          username: foundUser.username,
+          email: foundUser.email
+        }
+      });
 
-    } catch (err) {
-      request.log.error('Error processing refresh token:', err);
-      return reply.code(500).send({ error: 'Error processing refresh token' });
+    } catch (error) {
+      request.log.error('Login error:', error);
+      return reply.code(500).send({ error: 'Error processing request' });
     }
   });
 }
