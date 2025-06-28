@@ -94,3 +94,9 @@ curl --request POST "http://localhost:8200/v1/secret/data/jwt" \
     }
   }'
 ```
+
+
+```
+curl --request GET "http://localhost:8200/v1/secret/data/jwt" \
+  --header "X-Vault-Token: meu_token"
+```

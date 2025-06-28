@@ -1,11 +1,15 @@
 #!/bin/bash
+set -euo pipefail
 
+# Always resolve paths relative to project root
+PROJECT_ROOT=$(cd "$(dirname "$0")/.." && pwd)
 VAULT_SERVICE=vault
 VAULT_ADDR=http://localhost:8200
-ENV_FILE=.env.vault
+ENV_FILE="$PROJECT_ROOT/.env"
+DATA_DIR="$PROJECT_ROOT/vault/data"
 
 echo "Vault container up."
-docker-compose up -d $VAULT_SERVICE
+docker-compose -f "$PROJECT_ROOT/docker-compose.yml" up -d $VAULT_SERVICE
 
 echo "Esperando Vault ficar disponível em $VAULT_ADDR..."
 
@@ -25,10 +29,10 @@ if [ "$initialized" == "true" ]; then
 fi
 
 # Garante diretório persistente com permissões
-echo "Criando diretório persistente ./vault/data..."
-mkdir -p ./vault/data
-chown 100:100 ./vault/data
-chmod 700 ./vault/data
+echo "Criando diretório persistente $DATA_DIR..."
+mkdir -p "$DATA_DIR"
+chown 100:100 "$DATA_DIR"
+chmod 700 "$DATA_DIR"
 
 echo "Inicializando Vault..."
 
@@ -41,10 +45,9 @@ ROOT_TOKEN=$(echo "$init_response" | jq -r .root_token)
 
 if [ -z "$UNSEAL_KEY" ] || [ "$UNSEAL_KEY" = "null" ] || [ -z "$ROOT_TOKEN" ] || [ "$ROOT_TOKEN" = "null" ]; then
   echo "Erro ao inicializar Vault. Verifique logs do container."
-  docker-compose down
+  docker-compose -f "$PROJECT_ROOT/docker-compose.yml" down
   exit 1
 fi
-
 
 echo "Chaves obtidas:"
 echo "Unseal Key: $UNSEAL_KEY"
@@ -79,10 +82,16 @@ else
   echo "Secrets engine habilitado com sucesso!"
 fi
 
-# Salva as variáveis no .env
 echo "Salvando em $ENV_FILE..."
 
-cat > $ENV_FILE <<EOF
+perl -i -0777 -pe 's/\n+\z/\n/' "$ENV_FILE"
+
+sed -i '/^VAULT_UNSEAL_KEY=/d' "$ENV_FILE"
+sed -i '/^VAULT_TOKEN=/d' "$ENV_FILE"
+sed -i '/^VAULT_ADDR=/d' "$ENV_FILE"
+
+cat >> "$ENV_FILE" <<EOF
+
 VAULT_ADDR=http://vault:8200
 VAULT_UNSEAL_KEY=$UNSEAL_KEY
 VAULT_TOKEN=$ROOT_TOKEN
@@ -91,5 +100,5 @@ EOF
 echo "Arquivo $ENV_FILE criado com sucesso!"
 
 echo "Finalizando container Vault..."
-docker-compose down
+docker-compose -f "$PROJECT_ROOT/docker-compose.yml" down
 echo "Vault container down."
