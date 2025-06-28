@@ -8,10 +8,19 @@ else
 	DOCKER=docker-compose
 endif
 
-all: setup up
+all: setup vault-check up
 
 setup:
 	mkdir -p ./database/persistent
+
+vault-check:
+	@echo "Checking if .env has Vault secrets..."
+	@if ! tail -n 3 .env | grep -q '^VAULT_TOKEN=' || ! tail -n 3 .env | grep -q '^VAULT_UNSEAL_KEY='; then \
+		echo "Vault secrets missing. Running Vault init..."; \
+		sudo make -C vault init; \
+	else \
+		echo "Vault already initialized in .env. Skipping."; \
+	fi
 
 up:
 	$(DOCKER) up -d
@@ -36,10 +45,10 @@ clean: down
 # rm -rf srcs/frontend/dist
 
 fclean: clean
+	sudo make -C vault clean
 	rm -rf ./database
 
 re: clean up
-
 
 # env file should look like
 # GOOGLE_CLIENT_ID=xxx
