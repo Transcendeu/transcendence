@@ -33,7 +33,7 @@ if [ -z "$JWT_KEY" ] || [ -z "$JWT_VALUE" ] || [ -z "$JWT_REFRESH_KEY" ] || [ -z
   exit 1
 fi
 
-response=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$VAULT_ADDR/v1/secret/data/jwt" \
+response=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$VAULT_ADDR/v1/secret/data/$JWT_PATH" \
   -H "X-Vault-Token: $VAULT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{

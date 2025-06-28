@@ -62,6 +62,7 @@ re: clean up
 # JWT_VALUE=secret
 # JWT_REFRESH_KEY=signing_refresh_key
 # JWT_REFRESH_VALUE=refresh_secret
+# JWT_PATH=jwt_path
 # VAULT_ADDR=http://vault:8200
 # VAULT_TOKEN=xxx
 # VAULT_UNSEAL_KEY=xxx

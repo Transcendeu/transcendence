@@ -84,7 +84,7 @@ curl -s http://localhost:8200/v1/sys/health
 
 - Cadastrar uma secret no Vault:
 ```
-curl --request POST "http://localhost:8200/v1/secret/data/jwt" \
+curl --request POST "http://localhost:8200/v1/secret/data/jwt_path" \
   --header "X-Vault-Token: meu_token" \
   --header "Content-Type: application/json" \
   --data '{
@@ -95,8 +95,8 @@ curl --request POST "http://localhost:8200/v1/secret/data/jwt" \
   }'
 ```
 
-
+- Ler secret:
 ```
-curl --request GET "http://localhost:8200/v1/secret/data/jwt" \
+curl --request GET "http://localhost:8200/v1/secret/data/jwt_path" \
   --header "X-Vault-Token: meu_token"
 ```
