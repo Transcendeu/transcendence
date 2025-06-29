@@ -57,7 +57,6 @@ function connectToEngine(gameId: string, isLocal: boolean) {
         const obj = JSON.parse(line);
 
         if (obj.type === 'game_end') {
-          // Notify all clients and close connections
           for (const client of session.clients) {
             if (isConnectedClient(client)) {
               client.socket.send(JSON.stringify(obj));
@@ -66,7 +65,6 @@ function connectToEngine(gameId: string, isLocal: boolean) {
               }, 100);
             }
           }
-          // Clean up session after short delay
           setTimeout(() => {
             session.engineSocket.end();
             sessions.delete(session.id);
@@ -104,7 +102,6 @@ function connectToEngine(gameId: string, isLocal: boolean) {
   });
 }
 
-// ✅ POST /session - Create a new session
 fastify.post('/session', async (req, reply) => {
   const body = await req.body as { name: string, isLocal: boolean };
 
@@ -122,7 +119,6 @@ fastify.post('/session', async (req, reply) => {
     }
   }
 
-  // Create a new session
   const gameId = uuid();
   connectToEngine(gameId, body.isLocal);
   reply.send({ gameId });
@@ -157,7 +153,6 @@ fastify.get<{ Params: { name: string } }>('/session/by-name/:name', async (req, 
   });
 });
 
-// ✅ GET /session/:id - Get status
 fastify.get<{Params: { id: string }}>('/session/:id', async (req, reply) => {
   const session = sessions.get(req.params.id);
   if (!session) return reply.code(404).send({ error: 'Session not found' });
@@ -175,13 +170,12 @@ fastify.get<{Params: { id: string }}>('/session/:id', async (req, reply) => {
   reply.send({ gameId: session.id, players });
 });
 
-// ✅ GET /ws/:gameId - Join via WebSocket
 fastify.get<{Params: { gameId: string }}>('/ws/:gameId', { websocket: true }, (socket, request) => {
   const gameId = request.params.gameId;
   let session = sessions.get(gameId);
 
   if (!session) {
-    return socket.close(1008, 'Session not found'); // 1008 = policy violation
+    return socket.close(1008, 'Session not found');
   }
 
   const client: Client = {
@@ -222,14 +216,14 @@ fastify.get<{Params: { gameId: string }}>('/ws/:gameId', { websocket: true }, (s
           session.player1Name = client.name;
           assignedRole = 'player1';
         } else {
-          assignedRole = 'spectator'; // fallback
+          assignedRole = 'spectator';
         }
       } else if (requestedRole === 'player2') {
         if (session.player2Name === client.name || !session.player2Name) {
           session.player2Name = client.name;
           assignedRole = 'player2';
         } else {
-          assignedRole = 'spectator'; // fallback
+          assignedRole = 'spectator';
         }
       }
       client.role = assignedRole;
@@ -245,7 +239,7 @@ fastify.get<{Params: { gameId: string }}>('/ws/:gameId', { websocket: true }, (s
     }
 
   if (client.role === 'player1' || client.role === 'player2') {
-    if (data.type !== 'input') console.log(`[Relay] Forwarding to engine:(${data.type})`, msg.toString());//logging to implement
+    if (data.type !== 'input') console.log(`[Relay] Forwarding to engine:(${data.type})`, msg.toString());
     if (['input', 'ready', 'pause', 'resume', 'forfeit', 'space'].includes(data.type)) {
       const inputPayload = {
         player: client.name,
@@ -297,7 +291,6 @@ fastify.get<{Params: { gameId: string }}>('/ws/:gameId', { websocket: true }, (s
       }
     }
 
-    // If no active sockets are left in the session, start a cleanup timer
     if (![...session.clients].some(isConnectedClient)) {
       setTimeout(() => {
         if ([...session.clients].every(c => !c.socket?.readyState)) {
@@ -312,7 +305,6 @@ fastify.get<{Params: { gameId: string }}>('/ws/:gameId', { websocket: true }, (s
   });
 });
 
-// PATCH /session/:id/local-mode
 fastify.patch<{ Params: { id: string }, Body: { local: boolean } }>('/session/:id/local-mode', async (req, reply) => {
   const session = sessions.get(req.params.id);
   if (!session) return reply.code(404).send({ error: 'Session not found' });
@@ -365,5 +357,5 @@ function injectLocalPlayer(session: Session, localPlayer: string) {
     setTimeout(() => {
       session.engineSocket.write(JSON.stringify({ type: 'ready' }) + '\n');
       console.log(`[Local] Auto-started local match with ${localPlayer}`);
-    }, 50); // slight delay just to ensure engine is ready
+    }, 50);
 }

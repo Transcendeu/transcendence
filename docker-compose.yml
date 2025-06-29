@@ -48,6 +48,7 @@ services:
       context: ./srcs/api_gateway
       dockerfile: Dockerfile
     ports:
+      - "443:443"
       - "80:80"
     depends_on:
       - auth
