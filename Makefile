@@ -8,10 +8,7 @@ else
 	DOCKER=docker-compose
 endif
 
-all: setup vault-check up
-
-setup:
-	mkdir -p ./database/persistent
+all: vault-check up
 
 vault-check:
 	@echo "Checking if .env has Vault secrets..."
@@ -37,12 +34,6 @@ logs:
 clean: down
 # docker rmi transcendence-frontend:latest transcendence-auth:latest transcendence-web-nginx:latest transcendence-api-gateway:latest transcendence-relay:latest transcendence-engine:latest transcendence-database:latest
 	docker system prune -a
-	rm -rf srcs/vault/node_modules
-	rm -rf srcs/vault/dist
-	rm -rf srcs/auth/node_modules
-	rm -rf srcs/auth/database.sqlite
-	rm -rf srcs/frontend/node_modules
-	rm -rf srcs/frontend/dist
 
 fclean: clean
 	sudo make -C vault clean
