@@ -26,7 +26,7 @@ services:
     ports:
       - "5000:5000"
     volumes:
-      - ./database/persistent:/app/data  # TODO: make this the only persistent data directory
+      - database_data:/data  # TODO: make this the only persistent data directory
     env_file:
       - .env
     networks:
@@ -38,6 +38,17 @@ services:
       dockerfile: Dockerfile
     ports:
       - "4001:4001"
+    env_file:
+      - .env
+    networks:
+      - transcendence_network
+    
+  game-history:
+    build:
+      context: ./srcs/game_history
+      dockerfile: Dockerfile
+    ports:
+      - "4003:4003"
     env_file:
       - .env
     networks:
@@ -88,8 +99,16 @@ services:
     build:
       context: ./srcs/game/relay
       dockerfile: Dockerfile
+      args:
+        GAME_HISTORY_SERVICE_URL: ${GAME_HISTORY_SERVICE_URL} 
     container_name: pong_relay
     depends_on:
       - engine
+      - game-history
+    env_file:
+      .env
     networks:
       - transcendence_network
+
+volumes:
+  database_data:

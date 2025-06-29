@@ -19,5 +19,10 @@
     "typescript"
   ],
   "author": "Transcendeu Team",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "fastify": "^5.4.0",
+    "jsonwebtoken": "^9.0.2"
+  }
 }

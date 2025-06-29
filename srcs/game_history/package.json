@@ -1,0 +1,22 @@
+{
+  "name": "game-history-service",
+  "version": "1.0.8",
+  "description": "Authentication microservice",
+  "type": "commonjs",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js"
+  },
+  "dependencies": {
+    "fastify": "^5.3.3",
+    "@fastify/cors": "^11.0.1",
+    "@fastify/cookie": "^6.0.0",
+    "fastify-plugin": "^5.0.1",
+    "dotenv": "^16.5.0",
+    "@litehex/node-vault": "1.0.4"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3",
+    "@types/node": "^22.15.21"
+  }
+}
