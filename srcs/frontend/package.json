@@ -23,5 +23,10 @@
     "@babylonjs/materials": "^8.11.0",
     "babylonjs": "^8.11.0",
     "babylonjs-loaders": "^8.11.0"
-  }
+  },
+  "browserslist": [
+    "chrome >= 110",
+    "firefox >= 110",
+    "defaults"
+  ]
 }
