@@ -54,25 +54,42 @@ export class Login {
                 const password = formData.get('password') as string;
                 const token = formData.get('twoFactorToken') as string;
 
+                // console.log('[Login] Form submitted');
+                // console.log('[Login] Username:', username);
+                // console.log('[Login] Password (raw):', password);
+                // console.log('[Login] 2FA Token:', token);
+
                 try {
                     // Hash the password before sending
                     const hashedPassword = await hashPassword(password);
+                    console.log('[Login] Hashed password:', hashedPassword);
+
+                    const bodyPayload = { username, password: hashedPassword } as any;
+                    if (token && token.length === 6) {
+                        bodyPayload.twoFactorToken = token;
+                        console.log('[Login] Sending 2FA token in payload');
+                    } else {
+                        console.log('[Login] No 2FA token or invalid length, not sending token');
+                    }
 
                     const response = await fetch('/api/auth/login', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                         },
-                        body: JSON.stringify({ username, password: hashedPassword, twoFactorToken: token }),
+                        body: JSON.stringify(bodyPayload),
                     });
 
+                    console.log('[Login] Response status:', response.status);
                     const data = await response.json();
+                    // console.log('[Login] Response JSON:', data);
 
                     if (!response.ok) {
                         if (data.requiresTwoFactor) {
                             twoFactorGroup?.setAttribute('style', 'display: block');
                             errorDisplay.textContent = 'Please enter your 2FA code';
                             (errorDisplay as HTMLElement).style.display = 'block';
+                            console.warn('[Login] Requires 2FA token');
                             return;
                         }
                         throw new Error(data.error || 'Invalid credentials');
@@ -87,14 +104,17 @@ export class Login {
                         accessToken: data.accessToken,
                         refreshToken: data.refreshToken
                     };
-                    
+
+                    console.log('[Login] Login successful, storing tokens and user data', userData);
+
                     localStorage.setItem('user_data', JSON.stringify(userData));
                     localStorage.setItem('access_token', data.accessToken);
                     localStorage.setItem('refresh_token', data.refreshToken);
-                    
+
                     // Force a page reload to ensure proper state
                     window.location.href = '/';
                 } catch (error) {
+                    console.error('[Login] Login failed:', error);
                     errorDisplay.textContent = error instanceof Error ? error.message : 'Login failed';
                     (errorDisplay as HTMLElement).style.display = 'block';
                 }
@@ -103,6 +123,7 @@ export class Login {
 
         if (toRegister) {
             toRegister.addEventListener('click', () => {
+                console.log('[Login] Navigating to /register');
                 this.router.navigate('/register');
             });
         }
@@ -110,8 +131,12 @@ export class Login {
         if (twoFactorToken) {
             twoFactorToken.addEventListener('input', (e) => {
                 const input = e.target as HTMLInputElement;
+                const oldVal = input.value;
                 input.value = input.value.replace(/[^0-9]/g, '');
+                if (input.value !== oldVal) {
+                    console.log('[Login] Sanitized 2FA input to:', input.value);
+                }
             });
         }
     }
-} 
+}

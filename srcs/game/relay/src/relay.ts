@@ -4,6 +4,8 @@ import net from 'net';
 import type WSSocket from 'ws';
 import uuid from 'uuid-random';
 
+const GAME_URL = process.env.GAME_HISTORY_SERVICE_URL || 'http://game-history:4003';
+
 interface Client {
   socket?: WSSocket;
   role: 'player1' | 'player2' | 'spectator';
@@ -57,21 +59,77 @@ function connectToEngine(gameId: string, isLocal: boolean) {
         const obj = JSON.parse(line);
 
         if (obj.type === 'game_end') {
+          const winnerUsername = obj.winner === 'player1' ? session.player1Name : session.player2Name;
+
+          const gameDataToRegister = {
+            player1Username: session.player1Name, // Pego do próprio `session`
+            player2Username: session.player2Name, // Pego do próprio `session`
+            p1_score: obj.scores.player1,
+            p2_score: obj.scores.player2,
+            winnerUsername: winnerUsername,
+          };
+
+          // --- Logs Adicionados ---
+          console.log(`[Relay] Game ended for session ${session.id}.`);
+          console.log(`[Relay] Winner: ${winnerUsername}, Player1: ${session.player1Name}, Player2: ${session.player2Name}`);
+          console.log(`[Relay] Scores: P1=${obj.scores.player1}, P2=${obj.scores.player2}`);
+          console.log(`[Relay] Data to send to Game-History: ${JSON.stringify(gameDataToRegister)}`);
+          // --- Fim dos Logs Adicionados ---
+
+          // Lembre-se que GAME_URL deve estar definida (provavelmente como GAME_HISTORY_SERVICE_URL no seu .env)
+          // Assegure-se que GAME_URL esteja definida no Relay.ts, por exemplo:
+          // const GAME_URL = process.env.GAME_HISTORY_SERVICE_URL || 'http://pong_game_history:4002'; // OU a porta correta
+
+          if (!session.localGame && session.player1Name && session.player2Name) { // Apenas registre jogos online
+              const targetUrl = `${GAME_URL}/game-register`; // Ajustado para /game-register (endpoint do Game-History)
+              console.log(`[Relay] Attempting to register game with Game-History at: ${targetUrl}`);
+
+              fetch(targetUrl, {
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify(gameDataToRegister),
+              })
+              .then(response => {
+                  if (!response.ok) {
+                      console.error(`[Relay] Failed to send game history. Status: ${response.status} ${response.statusText}`);
+                      return response.json().then(err => console.error('[Relay] Error details:', err)).catch(() => {
+                          console.error('[Relay] Could not parse error details from response.');
+                      });
+                  }
+                  console.log('[Relay] Game history successfully registered with Game-History!');
+                  return response.json().then(data => console.log('[Relay] Game-History response data:', data)).catch(() => {
+                      console.log('[Relay] Game-History response successful but no JSON body.');
+                  });
+              })
+              .catch(error => {
+                  console.error('[Relay] Error communicating with Game-History:', error);
+              });
+          } else {
+              console.log(`[Relay] Not registering local or incomplete match (${session.id}). Local Game: ${session.localGame}, Player1 Name: ${session.player1Name}, Player2 Name: ${session.player2Name}.`);
+          }
+
+          // Nota: A linha 'console.log(`endpoint: ${GAME_URL}/games-register`);' pode ser removida
+          // ou ajustada, já que agora temos logs mais detalhados.
+          // console.log(`endpoint: ${GAME_URL}/games-register`);
+
+
           // Notify all clients and close connections
           for (const client of session.clients) {
-            if (isConnectedClient(client)) {
+            if (isConnectedClient(client)) { // Assumindo que isConnectedClient verifica se client.socket existe e está aberto
               client.socket.send(JSON.stringify(obj));
               setTimeout(() => {
                 client.socket.close(1000, 'Game ended');
               }, 100);
             }
           }
-          // Clean up session after short delay
           setTimeout(() => {
             session.engineSocket.end();
             sessions.delete(session.id);
-            nameToSession.delete(session.player1Name!);
-            nameToSession.delete(session.player2Name!);
+            if (session.player1Name) nameToSession.delete(session.player1Name); // Adicionar checagem para evitar erro se name for undefined
+            if (session.player2Name) nameToSession.delete(session.player2Name); // Adicionar checagem para evitar erro se name for undefined
+            console.log(`[Relay] Session ${session.id} cleaned up.`);
           }, 500);
           continue;
         }
@@ -104,7 +162,6 @@ function connectToEngine(gameId: string, isLocal: boolean) {
   });
 }
 
-// ✅ POST /session - Create a new session
 fastify.post('/session', async (req, reply) => {
   const body = await req.body as { name: string, isLocal: boolean };
 
@@ -122,7 +179,6 @@ fastify.post('/session', async (req, reply) => {
     }
   }
 
-  // Create a new session
   const gameId = uuid();
   connectToEngine(gameId, body.isLocal);
   reply.send({ gameId });
@@ -157,7 +213,6 @@ fastify.get<{ Params: { name: string } }>('/session/by-name/:name', async (req, 
   });
 });
 
-// ✅ GET /session/:id - Get status
 fastify.get<{Params: { id: string }}>('/session/:id', async (req, reply) => {
   const session = sessions.get(req.params.id);
   if (!session) return reply.code(404).send({ error: 'Session not found' });
@@ -175,13 +230,12 @@ fastify.get<{Params: { id: string }}>('/session/:id', async (req, reply) => {
   reply.send({ gameId: session.id, players });
 });
 
-// ✅ GET /ws/:gameId - Join via WebSocket
 fastify.get<{Params: { gameId: string }}>('/ws/:gameId', { websocket: true }, (socket, request) => {
   const gameId = request.params.gameId;
   let session = sessions.get(gameId);
 
   if (!session) {
-    return socket.close(1008, 'Session not found'); // 1008 = policy violation
+    return socket.close(1008, 'Session not found');
   }
 
   const client: Client = {
@@ -222,14 +276,14 @@ fastify.get<{Params: { gameId: string }}>('/ws/:gameId', { websocket: true }, (s
           session.player1Name = client.name;
           assignedRole = 'player1';
         } else {
-          assignedRole = 'spectator'; // fallback
+          assignedRole = 'spectator';
         }
       } else if (requestedRole === 'player2') {
         if (session.player2Name === client.name || !session.player2Name) {
           session.player2Name = client.name;
           assignedRole = 'player2';
         } else {
-          assignedRole = 'spectator'; // fallback
+          assignedRole = 'spectator';
         }
       }
       client.role = assignedRole;
@@ -245,7 +299,7 @@ fastify.get<{Params: { gameId: string }}>('/ws/:gameId', { websocket: true }, (s
     }
 
   if (client.role === 'player1' || client.role === 'player2') {
-    if (data.type !== 'input') console.log(`[Relay] Forwarding to engine:(${data.type})`, msg.toString());//logging to implement
+    if (data.type !== 'input') console.log(`[Relay] Forwarding to engine:(${data.type})`, msg.toString());
     if (['input', 'ready', 'pause', 'resume', 'forfeit', 'space'].includes(data.type)) {
       const inputPayload = {
         player: client.name,
@@ -297,7 +351,6 @@ fastify.get<{Params: { gameId: string }}>('/ws/:gameId', { websocket: true }, (s
       }
     }
 
-    // If no active sockets are left in the session, start a cleanup timer
     if (![...session.clients].some(isConnectedClient)) {
       setTimeout(() => {
         if ([...session.clients].every(c => !c.socket?.readyState)) {
@@ -312,7 +365,6 @@ fastify.get<{Params: { gameId: string }}>('/ws/:gameId', { websocket: true }, (s
   });
 });
 
-// PATCH /session/:id/local-mode
 fastify.patch<{ Params: { id: string }, Body: { local: boolean } }>('/session/:id/local-mode', async (req, reply) => {
   const session = sessions.get(req.params.id);
   if (!session) return reply.code(404).send({ error: 'Session not found' });
@@ -365,5 +417,5 @@ function injectLocalPlayer(session: Session, localPlayer: string) {
     setTimeout(() => {
       session.engineSocket.write(JSON.stringify({ type: 'ready' }) + '\n');
       console.log(`[Local] Auto-started local match with ${localPlayer}`);
-    }, 50); // slight delay just to ensure engine is ready
+    }, 50);
 }

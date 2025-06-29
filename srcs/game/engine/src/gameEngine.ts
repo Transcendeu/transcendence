@@ -213,7 +213,7 @@ server.listen(1337, () => {
 
 function getInitialGameState(scoreP1: number, scoreP2: number, maxScore?: number): GameState {
   if (!maxScore) {
-    maxScore = 11;
+    maxScore = GameConstants.RULES.DEFAULT_MAX_SCORE;
   }
   return {
     ball: {
@@ -363,10 +363,10 @@ function checkGameEnd(state: GameState, scoringPlayer: 'player1' | 'player2') {
     return;
   }
 
-  const pointsAhead = state.scores[scoringPlayer] - state.scores[otherPlayer];
-  const pointsRemaining = state.maxScore - state.scores[scoringPlayer];
+  const pointsScored = state.scores[scoringPlayer] + state.scores[otherPlayer];
+  const pointsRemaining = state.maxScore - pointsScored;
 
-  if (pointsAhead > pointsRemaining) {
+  if (state.scores[scoringPlayer] > state.scores[otherPlayer] + pointsRemaining) {
     state.gameStatus = 'finished';
     state.winner = scoringPlayer;
   }

@@ -141,7 +141,7 @@ async initOnline(name: string, matchInfo: {gameId: string | null, role: string})
         this.activeSocket.close();
       }
 
-      this.activeSocket = new WebSocket(`ws://${location.host}/ws/${gameId}`);
+      this.activeSocket = new WebSocket(`wss://${location.host}/ws/${gameId}`);
 
       this.activeSocket.onopen = () => {
         console.log('WebSocket connected');

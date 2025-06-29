@@ -8,10 +8,16 @@ else
 	DOCKER=docker-compose
 endif
 
-all: setup up
+all: vault-check up
 
-setup:
-	mkdir -p ./database/persistent
+vault-check:
+	@echo "Checking if .env has Vault secrets..."
+	@if ! tail -n 3 .env | grep -q '^VAULT_TOKEN=' || ! tail -n 3 .env | grep -q '^VAULT_UNSEAL_KEY='; then \
+		echo "Vault secrets missing. Running Vault init..."; \
+		sudo make -C vault init; \
+	else \
+		echo "Vault already initialized in .env. Skipping."; \
+	fi
 
 up:
 	$(DOCKER) up -d
@@ -26,35 +32,30 @@ logs:
 	$(DOCKER) logs -f auth
 
 clean: down
-#	docker rmi transcendence-frontend:latest transcendence-auth:latest transcendence-web-nginx:latest transcendence-api-gateway:latest transcendence-relay:latest transcendence-engine:latest transcendence-database:latest
+# docker rmi transcendence-frontend:latest transcendence-auth:latest transcendence-web-nginx:latest transcendence-api-gateway:latest transcendence-relay:latest transcendence-engine:latest transcendence-database:latest
 	docker system prune -a
-	rm -rf srcs/vault/node_modules
-	rm -rf srcs/vault/dist
-	rm -rf srcs/auth/node_modules
-	rm -rf srcs/auth/database.sqlite
-	rm -rf srcs/frontend/node_modules
-	rm -rf srcs/frontend/dist
 
 fclean: clean
+	sudo make -C vault clean
 	rm -rf ./database
 
 re: clean up
 
-
-#env file should look like
-# GOOGLE_CLIENT_ID=
-# GOOGLE_CLIENT_SECRET=
-# GOOGLE_CALLBACK_URL=
+# env file should look like
+# GOOGLE_CLIENT_ID=xxx
+# GOOGLE_CLIENT_SECRET=xxx
+# GOOGLE_CALLBACK_URL='http://localhost/api/auth/google/callback'
 # NODE_ENV=development
-# JWT_SECRET=jwt_secret
-# JWT_REFRESH_SECRET=jwt_refresh
-# JWT_KEY=signing_key
-# JWT_VALUE=8b1d0fcfa4f6b0e8d63f6ac68f31a9c6d6d94f3a98b74c7c21ec5f4a02dd94a8
-# VAULT_DEV_ROOT_TOKEN_ID=my-root-token
-# VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200
-# VAULT_TOKEN=my-root-token
-# VAULT_ADDR=http://vault:8200
 # AUTH_PORT=4001
+# GAME_PORT=4003
 # DB_PORT=5000
 # DATABASE_URL=http://database:5000
-# VAULT_PORT=3082 this is not used anywhere
+# GAME_HISTORY_SERVICE_URL=http://game-history:4003/
+# JWT_KEY=signing_key
+# JWT_VALUE=secret
+# JWT_REFRESH_KEY=signing_refresh_key
+# JWT_REFRESH_VALUE=refresh_secret
+# JWT_PATH=jwt_path
+# VAULT_ADDR=http://vault:8200
+# VAULT_TOKEN=xxx
+# VAULT_UNSEAL_KEY=xxx

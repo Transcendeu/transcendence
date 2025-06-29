@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
 import speakeasy from 'speakeasy';
+import { signJwt, signRefreshJwt } from '../utils/jwt';
 
 interface LoginBody {
   username: string;
@@ -48,8 +48,7 @@ export async function loginRoute(fastify: FastifyInstance): Promise<void> {
         return reply.code(401).send({ error: 'Invalid credentials' });
       }
 
-      // 2) Confere senha (bcrypt)
-      // password já vem do frontend (atenção: idealmente, a senha deve ser enviada pura e hash feita aqui)
+      // 2) Verifica senha
       const valid = await bcrypt.compare(password, foundUser.password);
       if (!valid) {
         return reply.code(401).send({ error: 'Invalid credentials' });
@@ -72,22 +71,9 @@ export async function loginRoute(fastify: FastifyInstance): Promise<void> {
         }
       }
 
-      if (!process.env.JWT_SECRET || !process.env.JWT_REFRESH_SECRET) {
-        return reply.code(500).send({ error: 'JWT secrets not configured' });
-      }
-
-      // 4) Gera novos tokens
-      const accessToken = jwt.sign(
-        { id: foundUser.id, email: foundUser.email },
-        process.env.JWT_SECRET,
-        { expiresIn: '15m' }
-      );
-
-      const refreshToken = jwt.sign(
-        { id: foundUser.id },
-        process.env.JWT_REFRESH_SECRET,
-        { expiresIn: '7d' }
-      );
+      // 4) Gera tokens com seu módulo JWT
+      const accessToken = await signJwt({ id: foundUser.id, email: foundUser.email });
+      const refreshToken = await signRefreshJwt({ id: foundUser.id });
 
       const expiresAt = new Date();
       expiresAt.setMinutes(expiresAt.getMinutes() + 15);
@@ -105,7 +91,7 @@ export async function loginRoute(fastify: FastifyInstance): Promise<void> {
         })
       });
 
-      // se PATCH falhar, tenta criar
+      // se PATCH falhar, tenta criar novo registro
       if (!patchRes.ok) {
         await fetch(`${DB_SERVICE_URL}/auth-tokens`, {
           method: 'POST',
@@ -120,7 +106,7 @@ export async function loginRoute(fastify: FastifyInstance): Promise<void> {
             auth_provider: 'local'
           })
         });
-      }      
+      }
 
       return reply.send({
         accessToken,
@@ -133,9 +119,8 @@ export async function loginRoute(fastify: FastifyInstance): Promise<void> {
       });
 
     } catch (error) {
-      console.error('Login error:', error);
+      request.log.error('Login error:', error);
       return reply.code(500).send({ error: 'Error processing request' });
     }
   });
 }
-

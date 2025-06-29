@@ -1,5 +1,7 @@
 FROM node:22-alpine
 
+ARG GAME_HISTORY_SERVICE_URL
+
 WORKDIR /app
 
 COPY package.json ./
