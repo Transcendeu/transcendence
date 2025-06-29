@@ -52,7 +52,7 @@ re: clean up
 # VAULT_TOKEN=my-root-token
 # VAULT_ADDR=http://vault:8200
 # AUTH_PORT=4001
-# GAME_PORT = 4002
+# GAME_PORT = 4003
 # DB_PORT=5000
 # DATABASE_URL=http://database:5000
 # VAULT_PORT=3082 this is not used anywhere

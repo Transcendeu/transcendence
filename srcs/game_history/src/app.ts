@@ -7,7 +7,7 @@ import { gameRegisterRoute } from './routes/game-register';
 
 dotenv.config();
 // const FRONTEND_URL = process.env.FRONTEND_URL || '*';
-const FRONTEND_URL = 'http://localhost:4002';
+const FRONTEND_URL = 'http://localhost:4003';
 
 // const FRONTEND_URL = process.env.FRONTEND_URL;
 
@@ -18,7 +18,7 @@ const FRONTEND_URL = 'http://localhost:4002';
 export const app = Fastify({ logger: true });
 
 app.register(cors, {
-  origin: FRONTEND_URL || 'http://localhost:4002', // fallback seguro apenas em dev
+  origin: FRONTEND_URL || 'http://localhost:4003', // fallback seguro apenas em dev
   methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: [
     'Content-Type',
@@ -35,4 +35,4 @@ app.register(cors, {
 });
 
 // Registra as rotas
-app.register(gameRegisterRoute, { prefix: '/api/games' });
+app.register(gameRegisterRoute);

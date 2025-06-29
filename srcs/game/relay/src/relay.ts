@@ -4,6 +4,8 @@ import net from 'net';
 import type WSSocket from 'ws';
 import uuid from 'uuid-random';
 
+const GAME_URL = process.env.GAME_HISTORY_SERVICE_URL || 'http://game-history:4003';
+
 interface Client {
   socket?: WSSocket;
   role: 'player1' | 'player2' | 'spectator';
@@ -57,9 +59,65 @@ function connectToEngine(gameId: string, isLocal: boolean) {
         const obj = JSON.parse(line);
 
         if (obj.type === 'game_end') {
+          const winnerUsername = obj.winner === 'player1' ? session.player1Name : session.player2Name;
+
+          const gameDataToRegister = {
+            player1Username: session.player1Name, // Pego do próprio `session`
+            player2Username: session.player2Name, // Pego do próprio `session`
+            p1_score: obj.scores.player1,
+            p2_score: obj.scores.player2,
+            winnerUsername: winnerUsername,
+          };
+
+          // --- Logs Adicionados ---
+          console.log(`[Relay] Game ended for session ${session.id}.`);
+          console.log(`[Relay] Winner: ${winnerUsername}, Player1: ${session.player1Name}, Player2: ${session.player2Name}`);
+          console.log(`[Relay] Scores: P1=${obj.scores.player1}, P2=${obj.scores.player2}`);
+          console.log(`[Relay] Data to send to Game-History: ${JSON.stringify(gameDataToRegister)}`);
+          // --- Fim dos Logs Adicionados ---
+
+          // Lembre-se que GAME_URL deve estar definida (provavelmente como GAME_HISTORY_SERVICE_URL no seu .env)
+          // Assegure-se que GAME_URL esteja definida no Relay.ts, por exemplo:
+          // const GAME_URL = process.env.GAME_HISTORY_SERVICE_URL || 'http://pong_game_history:4002'; // OU a porta correta
+
+          if (!session.localGame && session.player1Name && session.player2Name) { // Apenas registre jogos online
+              const targetUrl = `${GAME_URL}/game-register`; // Ajustado para /game-register (endpoint do Game-History)
+              console.log(`[Relay] Attempting to register game with Game-History at: ${targetUrl}`);
+
+              fetch(targetUrl, {
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify(gameDataToRegister),
+              })
+              .then(response => {
+                  if (!response.ok) {
+                      console.error(`[Relay] Failed to send game history. Status: ${response.status} ${response.statusText}`);
+                      return response.json().then(err => console.error('[Relay] Error details:', err)).catch(() => {
+                          console.error('[Relay] Could not parse error details from response.');
+                      });
+                  }
+                  console.log('[Relay] Game history successfully registered with Game-History!');
+                  return response.json().then(data => console.log('[Relay] Game-History response data:', data)).catch(() => {
+                      console.log('[Relay] Game-History response successful but no JSON body.');
+                  });
+              })
+              .catch(error => {
+                  console.error('[Relay] Error communicating with Game-History:', error);
+              });
+          } else {
+              console.log(`[Relay] Not registering local or incomplete match (${session.id}). Local Game: ${session.localGame}, Player1 Name: ${session.player1Name}, Player2 Name: ${session.player2Name}.`);
+          }
+
+          // Nota: A linha 'console.log(`endpoint: ${GAME_URL}/games-register`);' pode ser removida
+          // ou ajustada, já que agora temos logs mais detalhados.
+          // console.log(`endpoint: ${GAME_URL}/games-register`);
+
+
           // Notify all clients and close connections
           for (const client of session.clients) {
-            if (isConnectedClient(client)) {
+            if (isConnectedClient(client)) { // Assumindo que isConnectedClient verifica se client.socket existe e está aberto
               client.socket.send(JSON.stringify(obj));
               setTimeout(() => {
                 client.socket.close(1000, 'Game ended');
@@ -70,8 +128,9 @@ function connectToEngine(gameId: string, isLocal: boolean) {
           setTimeout(() => {
             session.engineSocket.end();
             sessions.delete(session.id);
-            nameToSession.delete(session.player1Name!);
-            nameToSession.delete(session.player2Name!);
+            if (session.player1Name) nameToSession.delete(session.player1Name); // Adicionar checagem para evitar erro se name for undefined
+            if (session.player2Name) nameToSession.delete(session.player2Name); // Adicionar checagem para evitar erro se name for undefined
+            console.log(`[Relay] Session ${session.id} cleaned up.`);
           }, 500);
           continue;
         }

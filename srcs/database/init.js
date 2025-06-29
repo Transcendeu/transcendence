@@ -142,14 +142,18 @@ initDatabase()
           [emailOrUsername, emailOrUsername],
           (err, row) => {
             if (err) {
+              // Rejeita a Promise em caso de erro de DB
+              fastify.log.error(`Erro ao buscar usuário '${emailOrUsername}':`, err);
               reply
                 .code(500)
                 .send({ error: 'Erro no banco de dados: falha ao buscar usuário' });
-              return reject(err);
+              return reject(err)
             }
             if (!row) {
+              // Se o usuário não for encontrado, envie 404 e rejeite a Promise
+              // para que o game-history possa tratar isso como um erro ou null
               reply.code(404).send({ error: 'Usuário não encontrado' });
-              return resolve({});
+              return reject(new Error('Usuário não encontrado'));
             }
             resolve(row);
           }
@@ -276,32 +280,52 @@ initDatabase()
     });
 
     fastify.post('/games', async (request, reply) => {
+      // --- Log 1: Requisição recebida e corpo ---
+      fastify.log.info(`[DB-Service] Requisição POST recebida em /games.`);
+      fastify.log.info(`[DB-Service] Corpo da requisição: ${JSON.stringify(request.body)}`);
+
       const {p1_id, p2_id, p1_score, p2_score, winner_id} = request.body;
 
-      if (!p1_id || !p2_id || !p1_score || !p2_score || !winner_id ) {
+      // --- Log 2: Validação dos campos ---
+      if (p1_id == null || p2_id == null || p1_score == null || p2_score == null || winner_id == null ) { // Use '== null' para incluir 0 como score válido
+        fastify.log.warn(`[DB-Service] Validação falhou: Campos obrigatórios faltando ou inválidos.`);
+        fastify.log.warn(`[DB-Service] Dados recebidos: p1_id=${p1_id}, p2_id=${p2_id}, p1_score=${p1_score}, p2_score=${p2_score}, winner_id=${winner_id}`);
         return reply
                 .code(400)
                 .send({ error: 'Campos obrigatórios faltando' });
       }
+      fastify.log.info(`[DB-Service] Validação dos campos bem-sucedida.`);
+
 
       try {
+        // --- Log 3: Preparando para inserir no DB ---
+        fastify.log.info(`[DB-Service] Preparando para inserir jogo no banco de dados.`);
+        fastify.log.info(`[DB-Service] Dados para inserção: p1_id=${p1_id}, p2_id=${p2_id}, p1_score=${p1_score}, p2_score=${p2_score}, winner_id=${winner_id}`);
+
         const result = await new Promise((resolve, reject) => {
           db.run(
             `INSERT INTO GAME (p1_id, p2_id, p1_score, p2_score, winner_id) VALUES (?, ?, ?, ?, ?)`,
             [p1_id, p2_id, p1_score, p2_score, winner_id],
             function (err) {
               if (err) {
+                // --- Log 4: Erro na inserção no DB ---
+                fastify.log.error(`[DB-Service] Erro ao executar INSERT para a partida: ${err.message}`);
                 return reject(err);
               }
-              resolve({ id: this.lastID }); // Retorna o ID do último registro inserido
+              // --- Log 5: Inserção bem-sucedida ---
+              fastify.log.info(`[DB-Service] Partida inserida com sucesso. lastID: ${this.lastID}, changes: ${this.changes}.`);
+              resolve({ id: this.lastID });
             }
           );
         });
 
+        // --- Log 6: Resposta de sucesso ---
+        fastify.log.info(`[DB-Service] Respondendo com sucesso (201) para registro de partida. Game ID: ${result.id}`);
         return reply.code(201).send({ message: 'Partida registrada com sucesso', game_id: result.id });
 
       } catch (err) {
-        fastify.log.error('Erro ao inserir partida:', err);
+        // --- Log 7: Erro geral no catch ---
+        fastify.log.error('[DB-Service] Erro inesperado ao inserir partida no banco de dados:', err);
         return reply
           .code(500)
           .send({error: 'Não foi possível registrar a partida'});
