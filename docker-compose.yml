@@ -26,7 +26,7 @@ services:
     ports:
       - "5000:5000"
     volumes:
-      - ./database/persistent:/app/data  # TODO: make this the only persistent data directory
+      - database_data:/data  # TODO: make this the only persistent data directory
     env_file:
       - .env
     networks:
@@ -38,6 +38,17 @@ services:
       dockerfile: Dockerfile
     ports:
       - "4001:4001"
+    env_file:
+      - .env
+    networks:
+      - transcendence_network
+    
+  game-history:
+    build:
+      context: ./srcs/game_history
+      dockerfile: Dockerfile
+    ports:
+      - "4002:4002"
     env_file:
       - .env
     networks:
@@ -92,3 +103,6 @@ services:
       - engine
     networks:
       - transcendence_network
+
+volumes:
+  database_data:
