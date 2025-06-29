@@ -3,7 +3,7 @@ dotenv.config();
 
 import { app } from './app';
 
-const PORT = process.env.GAME_PORT ? Number(process.env.GAME_PORT) : 4002;
+const PORT = process.env.GAME_PORT ? Number(process.env.GAME_PORT) : 4003;
 
 const start = async () => {
   const server_host = '0.0.0.0';
