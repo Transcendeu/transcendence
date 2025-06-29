@@ -15,29 +15,25 @@ Transcendence is a full-stack web application that implements various features i
 The project consists of multiple services:
 - Frontend web application
 - Authentication service (api/auth)
-- User management service (api/user)
 - Game service (api/game)
 - Nginx web server with security features
+- API Gateway with Nginx
 
 ## Features
 
 ### Frontend
 
 - [x] Tailwind CSS
+- [x] Browser Compatibility (Firefox + Chrome)
 
 ### Authentication (api/auth) - Fer
 - [x] Two-Factor Authentication (2FA)
 - [x] JWT-based authentication
 - [x] Google OAuth integration
 
-![FIXED] - Faltando session token não salvo no localstorage.
-
-![FIXED] - /register retornando 400. 
-
-![FIXED] - Senha não encriptada no frontend.
-
-### Game Service (api/game) / Remote Player - Nico
-- [ ] Real-time game communication
+### Game Service (api/game) / Remote Player
+- [x] Real-time game communication
+- [x] Use of advanced 3D techniques
 - [ ] Match history and statistics
 - [ ] Game database implementation
 
@@ -48,9 +44,8 @@ The project consists of multiple services:
 - [x] Frontend deployment setup
 - [x] Vault Hashicorp
 
-### CLI - Mark
-- [ ] Replacing Basic Pong with Server-Side Pong and Implementing an API
-- [ ] Enabling Pong Gameplay via CLI against Web Users with API Integration
+### Server Side
+- [x] Replacing Basic Pong with Server-Side Pong and Implementing an API
 
 ### - Deploy em Prod
 - [ ] duckong.net - Vercel
@@ -107,6 +102,7 @@ The application implements several security measures:
 - WAF (Web Application Firewall) protection
 - Secure authentication with 2FA
 - JWT-based session management
+- Vault to token secrets
 
 ## References
 
