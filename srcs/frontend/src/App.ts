@@ -101,6 +101,7 @@ export class App {
         return new Promise(async (resolve) => {
             const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
             const name = userData.username ?? '';
+            this.cleanupGameManager();
             this.gameManager = new GameManager(this.container, () => {
                 this.router.navigate('/');
                 resolve();
@@ -118,7 +119,7 @@ export class App {
 
             const matchFinder = new MatchFinder(this.container);
             const matchInfo: { gameId: string | null, role: MatchRole } = await matchFinder.findMatch(name);
-
+            this.cleanupGameManager();
             this.gameManager = new GameManager(this.container, () => {
                 this.router.navigate('/');
                 resolve();

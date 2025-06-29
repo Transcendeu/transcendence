@@ -8,10 +8,7 @@ else
 	DOCKER=docker-compose
 endif
 
-all: setup vault-check up
-
-setup:
-	mkdir -p ./database/persistent
+all: vault-check up
 
 vault-check:
 	@echo "Checking if .env has Vault secrets..."
@@ -56,8 +53,9 @@ re: clean up
 # GOOGLE_CALLBACK_URL='http://localhost/api/auth/google/callback'
 # NODE_ENV=development
 # AUTH_PORT=4001
-# GAME_PORT = 4003
+# GAME_PORT=4003
 # DB_PORT=5000
+# GAME_HISTORY_SERVICE_URL=http://game-history:4003
 # DATABASE_URL=http://database:5000
 # JWT_KEY=signing_key
 # JWT_VALUE=secret

@@ -11,8 +11,8 @@ services:
     ports:
       - "8200:8200"
     volumes:
-      - ./vault/data:/vault/data:Z                          # persistência de dados
-      - ./vault/vault.hcl:/vault/config/vault.hcl:ro,Z      # configuração do Vault
+      - ./vault/data:/vault/data                         # persistência de dados
+      - ./vault/vault.hcl:/vault/config/vault.hcl:ro     # configuração do Vault
     command: vault server -config=/vault/config/vault.hcl
     env_file:
       - .env
@@ -100,7 +100,7 @@ services:
       context: ./srcs/game/relay
       dockerfile: Dockerfile
       args:
-        GAME_HISTORY_SERVICE_URL: ${GAME_HISTORY_SERVICE_URL} 
+        GAME_HISTORY_SERVICE_URL: ${GAME_HISTORY_SERVICE_URL}
     container_name: pong_relay
     depends_on:
       - engine
