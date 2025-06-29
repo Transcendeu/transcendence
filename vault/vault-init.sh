@@ -1,6 +1,22 @@
 #!/bin/bash
 set -euo pipefail
 
+if command -v jq &> /dev/null
+then
+    echo "jq está instalado."
+else
+    sudo apt update
+    sudo apt install jq
+fi
+
+if command -v curl &> /dev/null
+then
+    echo "curl está instalado."
+else
+    sudo apt update
+    sudo apt install curl 
+fi
+
 # Always resolve paths relative to project root
 PROJECT_ROOT=$(cd "$(dirname "$0")/.." && pwd)
 VAULT_SERVICE=vault

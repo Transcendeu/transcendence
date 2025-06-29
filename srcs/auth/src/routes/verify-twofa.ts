@@ -22,7 +22,7 @@ export async function verify2faRoute(fastify: FastifyInstance): Promise<void> {
     reply: FastifyReply
   ) => {
     const { token } = request.body;
-
+    fastify.log.info('TOKEN 2FA' + token);
     if (!token) {
       return reply.code(400).send({ error: 'Token is required' });
     }
