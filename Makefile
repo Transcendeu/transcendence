@@ -51,6 +51,7 @@ re: clean up
 # DB_PORT=5000
 # GAME_HISTORY_SERVICE_URL=http://game-history:4003
 # DATABASE_URL=http://database:5000
+# GAME_HISTORY_SERVICE_URL=http://game-history:4003/
 # JWT_KEY=signing_key
 # JWT_VALUE=secret
 # JWT_REFRESH_KEY=signing_refresh_key
