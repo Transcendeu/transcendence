@@ -188,7 +188,7 @@ export class Menu {
                     <button class="menu-button" id="local-tournament">LOCAL TOURNAMENT</button>
                     ${isAuth ? `
                         <button class="menu-button" id="online-game">ONLINE GAME</button>
-                        <button class="menu-button" id="tournament">TOURNAMENT</button>
+                        <button class="menu-button" id="game-history">GAME HISTORY</button>
                         <button class="menu-button" id="settings">SETTINGS</button>
                         <button class="menu-button danger" id="logout">LOGOUT</button>
                     ` : `
@@ -196,7 +196,7 @@ export class Menu {
                             <p class="info-text">LOGIN TO ACCESS:</p>
                             <ul class="feature-list">
                                 <li>Online Matches</li>
-                                <li>Tournament Mode</li>
+                                <li>Game History</li>
                                 <li>Save Game Stats</li>
                                 <li>Global Rankings</li>
                             </ul>
@@ -221,7 +221,7 @@ export class Menu {
         const localGameBtn = document.getElementById('local-game');
         const localTournamentBtn = document.getElementById('local-tournament');
         const onlineGameBtn = document.getElementById('online-game');
-        const tournamentBtn = document.getElementById('tournament');
+        const gameHistoryBtn = document.getElementById('game-history');
         const settingsBtn = document.getElementById('settings');
         const loginBtn = document.getElementById('login');
         const registerBtn = document.getElementById('register');
@@ -246,9 +246,9 @@ export class Menu {
             });
         }
 
-        if (tournamentBtn) {
-            tournamentBtn.addEventListener('click', () => {
-                this.router.navigate('/tournament');
+        if (gameHistoryBtn) {
+            gameHistoryBtn.addEventListener('click', () => {
+                this.router.navigate('/game-history');
             });
         }
 

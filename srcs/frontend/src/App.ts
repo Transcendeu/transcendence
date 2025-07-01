@@ -4,6 +4,7 @@ import { NotFound } from './components/NotFound';
 import { GameManager } from './components/game-component/game-manager';
 import { Login } from './components/Login';
 import { Register } from './components/Register';
+import { GameHistory } from './components/GameHistory';
 import { Settings } from './components/Settings';
 import { LocalTournament } from './components/LocalTournament';
 import { MatchFinder } from './components/game-component/match-finder';
@@ -77,10 +78,10 @@ export class App {
             return this.startOnlineGame();
         }, { requiresAuth: true });
 
-        this.router.addRoute('/tournament', () => {
-            console.log('Rendering tournament route');
+        this.router.addRoute('/game-history', () => {
+            console.log('Rendering game-history route');
             this.container.innerHTML = '';
-            return this.startTournament();
+            new GameHistory(this.container, this.router);
         }, { requiresAuth: true });
 
         this.router.addRoute('/settings', () => {
@@ -127,18 +128,6 @@ export class App {
             });
             await this.gameManager.initOnline(name, matchInfo);
         });
-    }
-
-    private async startTournament(): Promise<void> {
-        // TODO: Implement tournament mode
-        this.container.innerHTML = `
-            <div class="coming-soon">
-                <h2>Tournament Mode Coming Soon!</h2>
-                <p>Compete in tournaments and climb the global rankings.</p>
-                <button class="menu-button" onclick="window.history.back()">Go Back</button>
-            </div>
-        `;
-        return Promise.resolve();
     }
 
     private showInitialScreen(): void {
