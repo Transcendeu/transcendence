@@ -5,9 +5,8 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
 // 1. Caminho para o arquivo .sqlite dentro de /database
-const DB_DIR   = path.join(__dirname, 'database');
+const DB_DIR   = '/data'; // Aponta diretamente para o diretório montado pelo Docker Compose
 const DB_PATH  = path.join(DB_DIR, 'database.sqlite');
-
 // 2. Abre (ou cria) o arquivo SQLite
 const db = new sqlite3.Database(DB_PATH, (err) => {
   if (err) {
@@ -23,7 +22,7 @@ const initDatabase = () => {
     db.serialize(() => {
       // Tabela USER
       db.run(`
-        CREATE TABLE IF NOT EXISTS USER (
+        CREATE TABLE IF NOT EXISTS USERS (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           username TEXT NOT NULL UNIQUE,
           email TEXT NOT NULL UNIQUE,
@@ -48,7 +47,7 @@ const initDatabase = () => {
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           revoked BOOLEAN DEFAULT 0,
           auth_provider TEXT DEFAULT 'local',
-          FOREIGN KEY (user_id) REFERENCES USER(id) ON DELETE CASCADE
+          FOREIGN KEY (user_id) REFERENCES USERS(id) ON DELETE CASCADE
         )`,
         (err) => 
         {
@@ -64,10 +63,12 @@ const initDatabase = () => {
           p1_id INTEGER NOT NULL,
           p2_id INTEGER NOT NULL,
           p1_score INTEGER NOT NULL,
-          p2_score INTEGER NOT NULL
+          p2_score INTEGER NOT NULL,
+          winner_id INTEGER NOT NULL,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (p1_id) REFERENCES USER(id) ON DELETE CASCADE,
-          FOREIGN KEY (p2_id) REFERENCES USER(id) ON DELETE CASCADE
+          FOREIGN KEY (p1_id) REFERENCES USERS(id) ON DELETE CASCADE,
+          FOREIGN KEY (p2_id) REFERENCES USERS(id) ON DELETE CASCADE,
+          FOREIGN KEY (winner_id) REFERENCES USERS(id) ON DELETE CASCADE
         )`,
         (err) =>
         {
@@ -108,7 +109,7 @@ initDatabase()
       }
       return new Promise((resolve, reject) => {
         db.run(
-          'INSERT INTO USER (username, email, password) VALUES (?, ?, ?)',
+          'INSERT INTO USERS (username, email, password) VALUES (?, ?, ?)',
           [username, email, password],
           function (err) {
             if (err) {
@@ -116,7 +117,7 @@ initDatabase()
                 reply.code(400).send({ error: 'Nome de usuário ou e-mail já existente' });
                 return reject(err);
               }
-              reply.code(500).send({ error: 'Erro no banco de dados' });
+              reply.code(500).send({ error: 'Erro no banco de dados: falha ao registrar usuário' });
               return reject(err);
             }
             resolve({ id: this.lastID, username, email });
@@ -137,18 +138,22 @@ initDatabase()
 
       return new Promise((resolve, reject) => {
         db.get(
-          'SELECT * FROM USER WHERE email = ? OR username = ?',
+          'SELECT * FROM USERS WHERE email = ? OR username = ?',
           [emailOrUsername, emailOrUsername],
           (err, row) => {
             if (err) {
+              // Rejeita a Promise em caso de erro de DB
+              fastify.log.error(`Erro ao buscar usuário '${emailOrUsername}':`, err);
               reply
                 .code(500)
-                .send({ error: 'Erro no banco de dados' });
-              return reject(err);
+                .send({ error: 'Erro no banco de dados: falha ao buscar usuário' });
+              return reject(err)
             }
             if (!row) {
+              // Se o usuário não for encontrado, envie 404 e rejeite a Promise
+              // para que o game-history possa tratar isso como um erro ou null
               reply.code(404).send({ error: 'Usuário não encontrado' });
-              return resolve({});
+              return reject(new Error('Usuário não encontrado'));
             }
             resolve(row);
           }
@@ -171,11 +176,11 @@ initDatabase()
 
       return new Promise((resolve, reject) => {
         db.run(
-          `UPDATE USER SET ${placeholders}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+          `UPDATE USERS SET ${placeholders}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
           [...values, userId],
           function (err) {
             if (err) {
-              reply.code(500).send({ error: 'Erro no banco de dados' });
+              reply.code(500).send({ error: 'Erro no banco de dados: falha ao recuperar ID' });
               return reject(err);
             }
             resolve({ changes: this.changes });
@@ -197,7 +202,7 @@ initDatabase()
           [user_id, access_token, refresh_token || null, expires_at, auth_provider || 'local'],
           function (err) {
             if (err) {
-              reply.code(500).send({ error: 'Erro no banco de dados' });
+              reply.code(500).send({ error: 'Erro no banco de dados: falha ao criar token' });
               return reject(err);
             }
             resolve({ id: this.lastID });
@@ -238,7 +243,7 @@ initDatabase()
             if (err) {
               reply
                 .code(500)
-                .send({ error: 'Erro no banco de dados' });
+                .send({ error: 'Erro no banco de dados: falha ao recuperar token' });
               return reject(err);
             }
             resolve(rows);
@@ -265,7 +270,7 @@ initDatabase()
           [...values, authId],
           function (err) {
             if (err) {
-              reply.code(500).send({ error: 'Erro no banco de dados' });
+              reply.code(500).send({ error: 'Erro no banco de dados: falha ao atualizar token' });
               return reject(err);
             }
             resolve({ changes: this.changes });
@@ -274,6 +279,60 @@ initDatabase()
       });
     });
 
+    fastify.post('/games', async (request, reply) => {
+      // --- Log 1: Requisição recebida e corpo ---
+      fastify.log.info(`[DB-Service] Requisição POST recebida em /games.`);
+      fastify.log.info(`[DB-Service] Corpo da requisição: ${JSON.stringify(request.body)}`);
+
+      const {p1_id, p2_id, p1_score, p2_score, winner_id} = request.body;
+
+      // --- Log 2: Validação dos campos ---
+      if (p1_id == null || p2_id == null || p1_score == null || p2_score == null || winner_id == null ) { // Use '== null' para incluir 0 como score válido
+        fastify.log.warn(`[DB-Service] Validação falhou: Campos obrigatórios faltando ou inválidos.`);
+        fastify.log.warn(`[DB-Service] Dados recebidos: p1_id=${p1_id}, p2_id=${p2_id}, p1_score=${p1_score}, p2_score=${p2_score}, winner_id=${winner_id}`);
+        return reply
+                .code(400)
+                .send({ error: 'Campos obrigatórios faltando' });
+      }
+      fastify.log.info(`[DB-Service] Validação dos campos bem-sucedida.`);
+
+
+      try {
+        // --- Log 3: Preparando para inserir no DB ---
+        fastify.log.info(`[DB-Service] Preparando para inserir jogo no banco de dados.`);
+        fastify.log.info(`[DB-Service] Dados para inserção: p1_id=${p1_id}, p2_id=${p2_id}, p1_score=${p1_score}, p2_score=${p2_score}, winner_id=${winner_id}`);
+
+        const result = await new Promise((resolve, reject) => {
+          db.run(
+            `INSERT INTO GAME (p1_id, p2_id, p1_score, p2_score, winner_id) VALUES (?, ?, ?, ?, ?)`,
+            [p1_id, p2_id, p1_score, p2_score, winner_id],
+            function (err) {
+              if (err) {
+                // --- Log 4: Erro na inserção no DB ---
+                fastify.log.error(`[DB-Service] Erro ao executar INSERT para a partida: ${err.message}`);
+                return reject(err);
+              }
+              // --- Log 5: Inserção bem-sucedida ---
+              fastify.log.info(`[DB-Service] Partida inserida com sucesso. lastID: ${this.lastID}, changes: ${this.changes}.`);
+              resolve({ id: this.lastID });
+            }
+          );
+        });
+
+        // --- Log 6: Resposta de sucesso ---
+        fastify.log.info(`[DB-Service] Respondendo com sucesso (201) para registro de partida. Game ID: ${result.id}`);
+        return reply.code(201).send({ message: 'Partida registrada com sucesso', game_id: result.id });
+
+      } catch (err) {
+        // --- Log 7: Erro geral no catch ---
+        fastify.log.error('[DB-Service] Erro inesperado ao inserir partida no banco de dados:', err);
+        return reply
+          .code(500)
+          .send({error: 'Não foi possível registrar a partida'});
+      }
+    });
+
+
     // 6. Inicia o servidor Fastify na porta 5000
     const start = async () => {
       try {
@@ -281,7 +340,7 @@ initDatabase()
           port: process.env.DB_PORT || 5000,
           host: '0.0.0.0'
         });
-        fastify.log.info(`Database service rodando em http://0.0.0.0:${process.env.PORT || 5000}`);
+        fastify.log.info(`Database service rodando em http://0.0.0.0:${process.env.DB_PORT || 5000}`);
       } catch (err) {
         fastify.log.error(err);
         process.exit(1);

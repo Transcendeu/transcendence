@@ -863,3 +863,47 @@ button#forfeit.conceding {
     60% { transform: translateX(-2px); }
     80% { transform: translateX(2px); }
 }
+
+/* GAME HISTORY */
+.game-history-content {
+  @apply flex flex-col justify-between p-8 bg-black bg-opacity-80 border-2 border-neonCyan 
+    shadow-[0_0_20px_#0ff] w-full max-w-[75vw] min-h-[90vh] max-h-[90vh] overflow-auto;
+}
+
+.game-history-container {
+  @apply flex justify-center items-center;
+  background: radial-gradient(circle at center, rgba(255, 0, 128, 0.1) 0%, transparent 80%);
+}
+
+.game-history-title {
+  @apply text-neonCyan text-2xl text-center mb-8;
+  text-shadow: 0 0 10px #0ff;
+}
+
+.game-history-table {
+  @apply border border-neonCyan text-white text-center table-fixed;
+}
+
+.game-history-thead {
+  @apply bg-black bg-opacity-80 text-neonCyan;
+}
+
+.game-history-th {
+  @apply px-3 py-2 break-words;
+}
+
+.game-history-td {
+  @apply px-3 py-2 break-words;
+}
+
+.game-history-tr {
+  @apply bg-black bg-opacity-70 hover:bg-opacity-90 transition-all;
+}
+
+.game-history-winner {
+  @apply text-neonMagenta font-bold;
+}
+
+.back-button {
+  @apply mt-4 px-4 py-2 bg-neonCyan rounded text-black font-semibold hover:bg-neonMagenta hover:text-white transition-colors;
+}

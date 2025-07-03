@@ -76,12 +76,12 @@ export class Settings {
             const user = await response.json();
             const statusDiv = document.querySelector('#twoFactorStatus');
             if (statusDiv) {
-                statusDiv.textContent = user.two_factor_enabled ? '2FA is enabled' : '2FA is not enabled';
+                statusDiv.textContent = user.twoFactorEnabled ? '2FA is enabled' : '2FA is not enabled';
             }
 
             const setupButton = document.querySelector('#setup2FA');
             if (setupButton) {
-                setupButton.textContent = user.two_factor_enabled ? 'Disable 2FA' : 'Setup 2FA';
+                setupButton.textContent = user.twoFactorEnabled ? 'Disable 2FA' : 'Setup 2FA';
             }
         } catch (error) {
             console.error('Error loading 2FA status:', error);

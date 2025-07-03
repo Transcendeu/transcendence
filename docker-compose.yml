@@ -7,9 +7,13 @@ services:
     image: hashicorp/vault:1.16
     container_name: vault
     cap_add:
-      - IPC_LOCK  # Prevent Vault memory from being swapped to disk
+      - IPC_LOCK
     ports:
       - "8200:8200"
+    volumes:
+      - ./vault/data:/vault/data:Z                          # persistência de dados
+      - ./vault/vault.hcl:/vault/config/vault.hcl:ro,Z      # configuração do Vault
+    command: vault server -config=/vault/config/vault.hcl
     env_file:
       - .env
     networks:
@@ -19,10 +23,14 @@ services:
     build:
       context: ./srcs/database
       dockerfile: Dockerfile
+    image: database
     ports:
       - "5000:5000"
     volumes:
-      - ./database/persistent:/app/data  # TODO: make this the only persistent data directory
+      - database_data:/data 
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     env_file:
       - .env
     networks:
@@ -32,8 +40,27 @@ services:
     build:
       context: ./srcs/auth
       dockerfile: Dockerfile
+    image: auth
     ports:
       - "4001:4001"
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    env_file:
+      - .env
+    networks:
+      - transcendence_network
+    
+  game-history:
+    build:
+      context: ./srcs/game_history
+      dockerfile: Dockerfile
+    image: game-history
+    ports:
+      - "4003:4003"
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     env_file:
       - .env
     networks:
@@ -43,7 +70,9 @@ services:
     build:
       context: ./srcs/api_gateway
       dockerfile: Dockerfile
+    image: api-gateway
     ports:
+      - "443:443"
       - "80:80"
     depends_on:
       - auth
@@ -55,6 +84,10 @@ services:
     build:
       context: ./srcs/frontend
       dockerfile: Dockerfile
+    image: frontend
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     networks:
       - transcendence_network
 
@@ -62,6 +95,7 @@ services:
     build:
       context: ./srcs/web_nginx
       dockerfile: Dockerfile
+    image: web-nginx
     ports:
       - "8080:8080"
     depends_on:
@@ -73,7 +107,7 @@ services:
     build:
       context: ./srcs/game/engine
       dockerfile: Dockerfile
-    container_name: pong_engine
+    image: engine
     depends_on:
       - frontend
     networks:
@@ -83,8 +117,16 @@ services:
     build:
       context: ./srcs/game/relay
       dockerfile: Dockerfile
-    container_name: pong_relay
+      args:
+        GAME_HISTORY_SERVICE_URL: ${GAME_HISTORY_SERVICE_URL} 
+    image: relay
     depends_on:
       - engine
+      - game-history
+    env_file:
+      .env
     networks:
       - transcendence_network
+
+volumes:
+  database_data:
