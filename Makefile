@@ -1,12 +1,14 @@
-.PHONY: up down build logs clean
+.PHONY: all up down build logs clean fclean re nuke vault-check
 
-DOCKER_COMPOSE_VERSION:=$(shell docker compose version | cut -d' ' -f4 | cut -d'.' -f1 | cut -d'v' -f2)
+DOCKER_COMPOSE_VERSION := $(shell docker compose version | cut -d' ' -f4 | cut -d'.' -f1 | cut -d'v' -f2)
 
 ifeq ($(DOCKER_COMPOSE_VERSION), 2)
-	DOCKER=docker compose
+	DOCKER = docker compose
 else
-	DOCKER=docker-compose
+	DOCKER = docker-compose
 endif
+
+IMAGES = frontend auth web-nginx api-gateway relay engine database game-history
 
 all: vault-check up
 
@@ -19,7 +21,7 @@ vault-check:
 		echo "Vault already initialized in .env. Skipping."; \
 	fi
 
-up:
+up: build
 	$(DOCKER) up -d
 
 down:
@@ -29,17 +31,26 @@ build:
 	$(DOCKER) build --no-cache
 
 logs:
-	$(DOCKER) logs -f auth
+ifndef SERVICE
+	$(error You must specify a service, e.g. make logs SERVICE=auth)
+endif
+	$(DOCKER) logs -f $(SERVICE)
 
 clean: down
-# docker rmi transcendence-frontend:latest transcendence-auth:latest transcendence-web-nginx:latest transcendence-api-gateway:latest transcendence-relay:latest transcendence-engine:latest transcendence-database:latest
-	docker system prune -a
+	@echo "Removing built images..."
+	-docker rmi $(addsuffix :latest, $(IMAGES)) || true
 
 fclean: clean
+	@echo "Removing Docker volumes..."
+	-docker volume rm database_data || true
 	sudo make -C vault clean
-	rm -rf ./database
 
 re: clean up
+
+nuke:
+	docker system prune -a -f
+	docker volume prune -f
+
 
 # env file should look like
 # GOOGLE_CLIENT_ID=xxx
