@@ -11,7 +11,7 @@ services:
     ports:
       - "8200:8200"
     volumes:
-      - ./vault/data:/vault/data:Z                          # persistência de dados
+      - transcendence_vault_data:/vault/data                # persistência de dados
       - ./vault/vault.hcl:/vault/config/vault.hcl:ro,Z      # configuração do Vault
     command: vault server -config=/vault/config/vault.hcl
     env_file:
@@ -27,7 +27,7 @@ services:
     ports:
       - "5000:5000"
     volumes:
-      - database_data:/data 
+      - transcendence_database_data:/data 
     dns:
       - 8.8.8.8
       - 1.1.1.1
@@ -129,4 +129,7 @@ services:
       - transcendence_network
 
 volumes:
-  database_data:
+  transcendence_database_data:
+    external: true
+  transcendence_vault_data:
+    external: true
