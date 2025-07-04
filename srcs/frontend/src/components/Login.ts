@@ -62,14 +62,10 @@ export class Login {
                 try {
                     // Hash the password before sending
                     const hashedPassword = await hashPassword(password);
-                    console.log('[Login] Hashed password:', hashedPassword);
 
                     const bodyPayload = { username, password: hashedPassword } as any;
                     if (token && token.length === 6) {
                         bodyPayload.twoFactorToken = token;
-                        console.log('[Login] Sending 2FA token in payload');
-                    } else {
-                        console.log('[Login] No 2FA token or invalid length, not sending token');
                     }
 
                     const response = await fetch('/api/auth/login', {
@@ -80,9 +76,7 @@ export class Login {
                         body: JSON.stringify(bodyPayload),
                     });
 
-                    console.log('[Login] Response status:', response.status);
                     const data = await response.json();
-                    // console.log('[Login] Response JSON:', data);
 
                     if (!response.ok) {
                         if (data.requiresTwoFactor) {
@@ -105,8 +99,6 @@ export class Login {
                         refreshToken: data.refreshToken
                     };
 
-                    console.log('[Login] Login successful, storing tokens and user data', userData);
-
                     localStorage.setItem('user_data', JSON.stringify(userData));
                     localStorage.setItem('access_token', data.accessToken);
                     localStorage.setItem('refresh_token', data.refreshToken);
@@ -114,7 +106,6 @@ export class Login {
                     // Force a page reload to ensure proper state
                     window.location.href = '/';
                 } catch (error) {
-                    console.error('[Login] Login failed:', error);
                     errorDisplay.textContent = error instanceof Error ? error.message : 'Login failed';
                     (errorDisplay as HTMLElement).style.display = 'block';
                 }
@@ -123,7 +114,6 @@ export class Login {
 
         if (toRegister) {
             toRegister.addEventListener('click', () => {
-                console.log('[Login] Navigating to /register');
                 this.router.navigate('/register');
             });
         }

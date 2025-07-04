@@ -110,11 +110,6 @@ function connectToEngine(gameId: string, isLocal: boolean) {
               console.log(`[Relay] Not registering local or incomplete match (${session.id}). Local Game: ${session.localGame}, Player1 Name: ${session.player1Name}, Player2 Name: ${session.player2Name}.`);
           }
 
-          // Nota: A linha 'console.log(`endpoint: ${GAME_URL}/games-register`);' pode ser removida
-          // ou ajustada, já que agora temos logs mais detalhados.
-          // console.log(`endpoint: ${GAME_URL}/games-register`);
-
-
           // Notify all clients and close connections
           for (const client of session.clients) {
             if (isConnectedClient(client)) { // Assumindo que isConnectedClient verifica se client.socket existe e está aberto

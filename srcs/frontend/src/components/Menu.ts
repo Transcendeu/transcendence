@@ -23,13 +23,11 @@ export class Menu {
     }
 
     private loadUserData(): void {
-        console.log('Loading user data...');
         const storedData = localStorage.getItem('user_data');
         const accessToken = localStorage.getItem('access_token');
         const refreshToken = localStorage.getItem('refresh_token');
 
         if (storedData && accessToken && refreshToken) {
-            console.log('Found user data in localStorage:', storedData);
             try {
                 this.userData = JSON.parse(storedData);
                 // Ensure tokens are up to date
@@ -37,29 +35,24 @@ export class Menu {
                     this.userData.accessToken = accessToken;
                     this.userData.refreshToken = refreshToken;
                 }
-                console.log('Loaded user data:', this.userData);
             } catch (error) {
                 console.error('Error parsing stored user data:', error);
                 this.userData = null;
             }
         } else {
-            console.log('No user data found in localStorage');
             this.userData = null;
         }
     }
 
     private handleGoogleCallback(): void {
-        console.log('Handling Google callback...');
         const urlParams = new URLSearchParams(window.location.search);
         const data = urlParams.get('data');
         
         if (data) {
-            console.log('Found data in URL:', data);
             try {
                 // Decode the base64 string, handling URL-safe base64
                 const base64Data = data.replace(/-/g, '+').replace(/_/g, '/');
                 const decodedData = JSON.parse(atob(base64Data));
-                console.log('Decoded user data:', decodedData);
 
                 if (decodedData.requiresTwoFactor) {
                     // Show 2FA input dialog
@@ -132,7 +125,6 @@ export class Menu {
                 
                 // Remove the data parameter from URL and update the page
                 window.history.replaceState({}, document.title, '/');
-                console.log('Updated URL and rendering menu...');
                 this.render();
             } catch (error) {
                 console.error('Error parsing user data:', error);
@@ -140,7 +132,6 @@ export class Menu {
                 this.loadUserData();
             }
         } else {
-            console.log('No data in URL, loading from localStorage...');
             this.loadUserData();
         }
     }
@@ -151,7 +142,6 @@ export class Menu {
         const refreshToken = localStorage.getItem('refresh_token');
 
         if (!userData || !accessToken || !refreshToken) {
-            console.log('Missing authentication data');
             return false;
         }
 
@@ -172,7 +162,6 @@ export class Menu {
 
     public render(): void {
         const isAuth = this.isAuthenticated();
-        console.log('Rendering menu, isAuth:', isAuth, 'userData:', this.userData);
         
         this.container.innerHTML = `
             <div class="menu-container">
