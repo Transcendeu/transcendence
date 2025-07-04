@@ -3,12 +3,13 @@ set -euo pipefail
 
 DOCKER_COMPOSE_CMD=${1:-docker compose}
 
-if ! command -v jq &> /dev/null; then
-  echo "jq not found locally, using Docker fallback..."
-  jq() {
-    docker run --rm -i imega/jq jq "$@"
-  }
-fi
+jq_query() {
+  if command -v jq &>/dev/null; then
+    jq "$@"
+  else
+    docker run --rm -i imega/jq "$@"
+  fi
+}
 
 # Always resolve paths relative to project root
 PROJECT_ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -23,43 +24,43 @@ docker volume create transcendence_vault_data >/dev/null
 echo "Ensuring correct permissions on transcendence_vault_data volume..."
 docker run --rm -v transcendence_vault_data:/vault/data alpine sh -c "chown -R 100:100 /vault/data"
 
-echo "Vault container up."
+echo "Starting Vault container..."
 $DOCKER_COMPOSE_CMD -f "$PROJECT_ROOT/docker-compose.yml" up -d $VAULT_SERVICE
 
-echo "Esperando Vault ficar disponível em $VAULT_ADDR..."
+echo "Waiting for Vault to be available at $VAULT_ADDR..."
 
-until \
-  status_json=$(curl -s $VAULT_ADDR/v1/sys/health 2>/dev/null) && \
-  initialized=$(echo "$status_json" | jq -r '.initialized' 2>/dev/null) && \
-  { [ "$initialized" = "false" ] || [ "$initialized" = "true" ]; }; do
-  echo "Aguardando Vault..."
+# Wait for Vault to be responsive
+while ! curl -s $VAULT_ADDR/v1/sys/health >/dev/null 2>&1; do
+  echo "Waiting for Vault to start..."
   sleep 2
 done
 
-initialized=$(echo "$status_json" | jq -r '.initialized')
+# Get initialization status
+status_json=$(curl -s $VAULT_ADDR/v1/sys/health)
+echo "Vault status response: $status_json"
 
-if [ "$initialized" == "true" ]; then
-  echo "Vault já está inicializado. Abortando para evitar sobrescrita."
+initialized=$(echo "$status_json" | jq_query -r '.initialized')
+
+if [ "$initialized" = "true" ]; then
+  echo "Vault is already initialized. Aborting to avoid overwriting."
+  exit 1
+elif [ "$initialized" = "false" ]; then
+  echo "Vault is not initialized. Proceeding with initialization..."
+else
+  echo "Unexpected Vault initialization status: $initialized"
   exit 1
 fi
 
-# # Garante diretório persistente com permissões
-# echo "Criando diretório persistente $DATA_DIR..."
-# mkdir -p "$DATA_DIR"
-# chown 100:100 "$DATA_DIR"
-# chmod 700 "$DATA_DIR"
-
-echo "Inicializando Vault..."
-
+echo "Initializing Vault..."
 init_response=$(curl -s --request POST \
   --data '{"secret_shares":1,"secret_threshold":1}' \
   $VAULT_ADDR/v1/sys/init)
 
-echo "Resposta da inicialização:"
+echo "Initialization response:"
 echo "$init_response"
 
-UNSEAL_KEY=$(echo "$init_response" | jq -r .keys_base64[0])
-ROOT_TOKEN=$(echo "$init_response" | jq -r .root_token)
+UNSEAL_KEY=$(echo "$init_response" | jq_query -r .keys_base64[0])
+ROOT_TOKEN=$(echo "$init_response" | jq_query -r .root_token)
 
 if [ -z "$UNSEAL_KEY" ] || [ "$UNSEAL_KEY" = "null" ] || [ -z "$ROOT_TOKEN" ] || [ "$ROOT_TOKEN" = "null" ]; then
   echo "Erro ao inicializar Vault. Verifique logs do container."
@@ -72,7 +73,7 @@ echo "Unseal Key: $UNSEAL_KEY"
 echo "Root Token: $ROOT_TOKEN"
 
 # Unseal Vault
-sealed=$(curl -s $VAULT_ADDR/v1/sys/seal-status | jq -r .sealed)
+sealed=$(curl -s $VAULT_ADDR/v1/sys/seal-status | jq_query -r .sealed)
 
 if [ "$sealed" = "true" ]; then
   echo "Desbloqueando Vault com a Unseal Key..."
@@ -84,7 +85,7 @@ fi
 
 # Habilita o secrets engine KV (se ainda não existir)
 echo "Verificando se o secrets engine já está habilitado..."
-if curl -s -H "X-Vault-Token: $ROOT_TOKEN" "$VAULT_ADDR/v1/sys/mounts" | jq -e '."secret/"' >/dev/null; then
+if curl -s -H "X-Vault-Token: $ROOT_TOKEN" "$VAULT_ADDR/v1/sys/mounts" | jq_query -e '."secret/"' >/dev/null; then
   echo "Secrets engine já habilitado no path 'secret/'."
 else
   echo "Habilitando secrets engine (KV) no path 'secret/'..."
