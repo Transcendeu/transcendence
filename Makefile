@@ -67,7 +67,6 @@ nuke: down
 # GOOGLE_CLIENT_ID=xxx
 # GOOGLE_CLIENT_SECRET=xxx
 # GOOGLE_CALLBACK_URL='http://localhost/api/auth/google/callback'
-# NODE_ENV=development
 # AUTH_PORT=4001
 # GAME_PORT=4003
 # DB_PORT=5000

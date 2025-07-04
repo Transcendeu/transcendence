@@ -8,8 +8,7 @@ services:
     container_name: vault
     cap_add:
       - IPC_LOCK
-    ports:
-      - "8200:8200"
+    ports: []
     volumes:
       - transcendence_vault_data:/vault/data                # persistência de dados
       - ./vault/vault.hcl:/vault/config/vault.hcl:ro,Z      # configuração do Vault
@@ -24,8 +23,6 @@ services:
       context: ./srcs/database
       dockerfile: Dockerfile
     image: database
-    ports:
-      - "5000:5000"
     volumes:
       - transcendence_database_data:/data 
     dns:
@@ -41,8 +38,6 @@ services:
       context: ./srcs/auth
       dockerfile: Dockerfile
     image: auth
-    ports:
-      - "4001:4001"
     dns:
       - 8.8.8.8
       - 1.1.1.1
@@ -56,8 +51,6 @@ services:
       context: ./srcs/game_history
       dockerfile: Dockerfile
     image: game-history
-    ports:
-      - "4003:4003"
     dns:
       - 8.8.8.8
       - 1.1.1.1

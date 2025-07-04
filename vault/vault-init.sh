@@ -25,7 +25,7 @@ echo "Ensuring correct permissions on transcendence_vault_data volume..."
 docker run --rm -v transcendence_vault_data:/vault/data alpine sh -c "chown -R 100:100 /vault/data"
 
 echo "Starting Vault container..."
-$DOCKER_COMPOSE_CMD -f "$PROJECT_ROOT/docker-compose.yml" up -d $VAULT_SERVICE
+$DOCKER_COMPOSE_CMD -f "$PROJECT_ROOT/docker-compose.yml" -f "./docker-compose.vault-init.yml" up -d $VAULT_SERVICE
 
 echo "Waiting for Vault to be available at $VAULT_ADDR..."
 
@@ -64,7 +64,7 @@ ROOT_TOKEN=$(echo "$init_response" | jq_query -r .root_token)
 
 if [ -z "$UNSEAL_KEY" ] || [ "$UNSEAL_KEY" = "null" ] || [ -z "$ROOT_TOKEN" ] || [ "$ROOT_TOKEN" = "null" ]; then
   echo "Erro ao inicializar Vault. Verifique logs do container."
-  $DOCKER_COMPOSE_CMD -f "$PROJECT_ROOT/docker-compose.yml" down
+  $DOCKER_COMPOSE_CMD -f "$PROJECT_ROOT/docker-compose.yml" -f "./docker-compose.vault-init.yml" down
   exit 1
 fi
 
@@ -119,5 +119,5 @@ EOF
 echo "Arquivo $ENV_FILE criado com sucesso!"
 
 echo "Finalizando container Vault..."
-docker-compose -f "$PROJECT_ROOT/docker-compose.yml" down
+$DOCKER_COMPOSE_CMD -f "$PROJECT_ROOT/docker-compose.yml" -f "./docker-compose.vault-init.yml" down
 echo "Vault container down."
