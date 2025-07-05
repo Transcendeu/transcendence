@@ -113,7 +113,7 @@ export async function googleCallbackRoute(fastify: FastifyInstance) {
           return reply.redirect(`/?data=${base64Data}`);
         }
 
-        const accessToken = await signJwt({ id: userId, email: userInfo.email });
+        const accessToken = await signJwt({ id: userId, email: userInfo.email, username: username });
         const refreshToken = await signRefreshJwt({ id: userId });
         const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 

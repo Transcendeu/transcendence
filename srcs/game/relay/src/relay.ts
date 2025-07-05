@@ -110,11 +110,6 @@ function connectToEngine(gameId: string, isLocal: boolean) {
               console.log(`[Relay] Not registering local or incomplete match (${session.id}). Local Game: ${session.localGame}, Player1 Name: ${session.player1Name}, Player2 Name: ${session.player2Name}.`);
           }
 
-          // Nota: A linha 'console.log(`endpoint: ${GAME_URL}/games-register`);' pode ser removida
-          // ou ajustada, já que agora temos logs mais detalhados.
-          // console.log(`endpoint: ${GAME_URL}/games-register`);
-
-
           // Notify all clients and close connections
           for (const client of session.clients) {
             if (isConnectedClient(client)) { // Assumindo que isConnectedClient verifica se client.socket existe e está aberto
@@ -167,6 +162,31 @@ fastify.post('/session', async (req, reply) => {
 
   if ((!body?.name || typeof body.name !== 'string') && !body.isLocal) {
     return reply.code(400).send({ error: 'Name is required' });
+  }
+
+  if (!body.isLocal) {
+    const auth = req.headers.authorization;
+    if (!auth?.startsWith('Bearer ')) {
+      return reply.code(401).send({ error: 'Missing or invalid Authorization header' });
+    }
+
+    try {
+      const validationRes = await fetch(`http://auth:${process.env.AUTH_PORT}/api/auth/validate-session`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': auth
+        },
+        body: JSON.stringify({ username: body.name })
+      });
+
+      if (!validationRes.ok) {
+        return reply.code(401).send({ error: 'Invalid or expired token' });
+      }
+    } catch (err) {
+      console.error('[Relay] Failed to validate session:', err);
+      return reply.code(500).send({ error: 'Auth validation failed' });
+    }
   }
 
   if (body.name) {
@@ -298,20 +318,19 @@ fastify.get<{Params: { gameId: string }}>('/ws/:gameId', { websocket: true }, (s
       }
     }
 
-  if (client.role === 'player1' || client.role === 'player2') {
-    if (data.type !== 'input') console.log(`[Relay] Forwarding to engine:(${data.type})`, msg.toString());
-    if (['input', 'ready', 'pause', 'resume', 'forfeit', 'space'].includes(data.type)) {
-      const inputPayload = {
-        player: client.name,
-        type: data.type,
-        role: session.localGame ? data.role : client.role,
-        input: normalizeInput(data.type, data.input),
-        state: data.state
-      };
-      session.engineSocket.write(JSON.stringify(inputPayload) + '\n');
+    if (client.role === 'player1' || client.role === 'player2') {
+      if (data.type !== 'input') console.log(`[Relay] Forwarding to engine:(${data.type})`, msg.toString());
+      if (['input', 'ready', 'pause', 'resume', 'forfeit', 'space'].includes(data.type)) {
+        const inputPayload = {
+          player: client.name,
+          type: data.type,
+          role: session.localGame ? data.role : client.role,
+          input: normalizeInput(data.type, data.input),
+          state: data.state
+        };
+        session.engineSocket.write(JSON.stringify(inputPayload) + '\n');
+      }
     }
-  }
-
   });
 
   socket.on('close', () => {
@@ -324,6 +343,14 @@ fastify.get<{Params: { gameId: string }}>('/ws/:gameId', { websocket: true }, (s
     if (!session.player1Name || (session.localGame && client.role !== 'spectator')) {
       session?.engineSocket.end();
       sessions.delete(gameId);
+      return;
+    }
+
+    if (client.role === 'player1' && !session.player2Name) {
+      console.log(`Player1 disconnected before an opponent joined. Ending session ${session.id}`);
+      session.engineSocket.end();
+      sessions.delete(gameId);
+      if (client.name) nameToSession.delete(client.name);
       return;
     }
 

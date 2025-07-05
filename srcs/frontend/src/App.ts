@@ -28,41 +28,35 @@ export class App {
     private setupRoutes(): void {
         // Public routes
         this.router.addRoute('/', () => {
-//            console.log('Rendering root route');
             this.container.innerHTML = '';
             const menu = new Menu(this.container, this.router);
             menu.render();
         });
 
         this.router.addRoute('/menu', () => {
-//            console.log('Rendering menu route');
             this.container.innerHTML = '';
             const menu = new Menu(this.container, this.router);
             menu.render();
         });
 
         this.router.addRoute('/login', () => {
-//            console.log('Rendering login route');
             this.container.innerHTML = '';
             new Login(this.container, this.router);
         });
 
         this.router.addRoute('/register', () => {
-//            console.log('Rendering register route');
             this.container.innerHTML = '';
             new Register(this.container, this.router);
         });
 
         // Game routes
         this.router.addRoute('/game/local', () => {
-//            console.log('Rendering local game route');
             this.container.innerHTML = '';
             return this.startLocalGame();
         });
 
         this.router.addRoute('/game/local-tournament', () => {
             this.cleanupGameManager();
-//            console.log('Rendering local tournament route');
             this.container.innerHTML = '';
             this.router.navigate('/game/local-tournament');
             new LocalTournament(this.container, this.router, {
@@ -72,20 +66,17 @@ export class App {
         });
 
         // Protected routes
-        this.router.addRoute('/game/online', () => {
-//            console.log('Rendering online game route');
+        this.router.addRoute('/game/online', async () => {
             this.container.innerHTML = '';
-            return this.startOnlineGame();
+            await this.startOnlineGame();
         }, { requiresAuth: true });
 
         this.router.addRoute('/game-history', () => {
-//            console.log('Rendering game-history route');
             this.container.innerHTML = '';
             new GameHistory(this.container, this.router);
         }, { requiresAuth: true });
 
         this.router.addRoute('/settings', () => {
-//            console.log('Rendering settings route');
             this.container.innerHTML = '';
             new Settings(this.container, this.router);
         }, { requiresAuth: true });
@@ -114,21 +105,31 @@ export class App {
 
     private async startOnlineGame(): Promise<void> {
         type MatchRole = 'player1' | 'player2' | 'spectator';
-        return new Promise(async (resolve) => {
-            const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
-            const name = userData.username;
+        const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
+        const name = userData.username;
 
-            const matchFinder = new MatchFinder(this.container);
-            const matchInfo: { gameId: string | null, role: MatchRole } = await matchFinder.findMatch(name);
-            this.cleanupGameManager();
+        const matchFinder = new MatchFinder(this.container);
+        const matchInfo: { gameId: string | null, role: MatchRole } = await matchFinder.findMatch(name);
+
+        this.cleanupGameManager();
+
+        return new Promise(async (resolve) => {
             this.gameManager = new GameManager(this.container, () => {
+                this.cleanupGameManager();
                 this.router.navigate('/');
                 resolve();
-                this.cleanupGameManager();
             });
-            await this.gameManager.initOnline(name, matchInfo);
+
+            try {
+                await this.gameManager.initOnline(name, matchInfo);
+            } catch (err) {
+                console.error('Failed to initialize online game:', err);
+                this.router.navigate('/menu');
+                resolve();
+            }
         });
     }
+
 
     private showInitialScreen(): void {
         const currentPath = window.location.pathname;

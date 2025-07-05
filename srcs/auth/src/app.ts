@@ -13,6 +13,7 @@ import { verify2faRoute } from './routes/verify-twofa';
 import { googleLoginRoute } from './routes/google-login';
 import { googleCallbackRoute } from './routes/google-callback';
 import { google2faVerifyRoute } from './routes/google-twofa';
+import { validateSessionRoute } from './routes/validate-session';
 
 dotenv.config();
 const FRONTEND_URL = process.env.FRONTEND_URL || '*';
@@ -48,3 +49,4 @@ app.register(verify2faRoute, { prefix: '/api/auth/2fa' });
 app.register(google2faVerifyRoute, { prefix: '/api/auth/google/2fa' });
 app.register(googleCallbackRoute, { prefix: '/api/auth/google' });
 app.register(googleLoginRoute, { prefix: '/api/auth/google' });
+app.register(validateSessionRoute, { prefix: '/api/auth' });

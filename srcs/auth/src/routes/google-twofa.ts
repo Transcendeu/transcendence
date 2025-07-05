@@ -70,7 +70,7 @@ export async function google2faVerifyRoute(fastify: FastifyInstance) {
       }
 
       // 5) Gera os tokens finais
-      const accessToken = await signJwt({ id: user.id, email: user.email });
+      const accessToken = await signJwt({ id: user.id, email: user.email, username: user.username });
       const refreshToken = await signRefreshJwt({ id: user.id });
       const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 

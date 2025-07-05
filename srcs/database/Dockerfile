@@ -10,6 +10,7 @@ RUN apk update && apk add --no-cache sqlite
 COPY . .
 
 RUN mkdir -p /data && chown -R node:node /data
+RUN chown -R node:node /usr/src/app
 
 EXPOSE 5000
 

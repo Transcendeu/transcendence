@@ -18,13 +18,18 @@ export class MatchFinder {
 
     return new Promise(async (resolve ) => {
       const existingMatch = await checkPlayerMatch(playerName);
-
       const renderButton = (match: typeof existingMatch): string => {
         let returnHtml: string = '<button id="create-btn" class="menu-button">Create New Match</button>';
+
         if (match) {
-          const opponent = match.players.find(name => name !== playerName);
+          const opponent = match.players?.find(name => name !== playerName);
           returnHtml += '<button id="join-btn" class="menu-button mt-4">Join Existing Match</button>';
-          returnHtml += `<div class="warning-message mt-4 text-neonCyan text-xs text-center">You have an ongoing ${match.local ? 'local match' : `match against ${opponent}`}, it will be forfeit if you create or join a different one</div>`;
+          const matchTypeMessage = match.local
+            ? 'local match'
+            : opponent
+              ? `match against ${opponent}`
+              : 'match waiting for an opponent';
+          returnHtml += `<div class="warning-message mt-4 text-neonCyan text-xs text-center">You have an ongoing ${matchTypeMessage}, it will be forfeit if you create or join a different one</div>`;
         }
         return returnHtml;
       };
@@ -42,6 +47,7 @@ export class MatchFinder {
             </div>
             <button id="search-btn" class="menu-button">Search</button>
           </div>
+            <button id="matchfinder-back-btn" class="back-button mt-6">← Back</button>
         </div>
       `;
 
@@ -58,6 +64,10 @@ export class MatchFinder {
           gameId: null,
           role: 'player1'
         });
+      });
+
+      this.container.querySelector('#matchfinder-back-btn')?.addEventListener('click', () => {
+        window.history.back(); // or this.router.navigate('/menu')
       });
 
       this.container.querySelector('#search-btn')?.addEventListener('click', async () => {
@@ -147,5 +157,5 @@ export class MatchFinder {
         });
       });
     });
-  }  
+  }
 }

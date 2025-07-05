@@ -7,7 +7,7 @@ else
 endif
 
 init:
-	sudo ./vault-init.sh
+	./vault-init.sh "$(DOCKER)"
 
 up:
 	$(DOCKER) up -d vault
@@ -19,8 +19,8 @@ logs:
 	$(DOCKER) logs -f vault
 
 clean:
-	@echo "Removing Vault data directory..."
-	sudo rm -rf ./data
+#	@echo "Removing Vault data directory..."
+#	sudo rm -rf ./data
 	@if [ -f "../.env" ]; then \
 		echo "Cleaning Vault variables from ../.env..."; \
 		sed -i '/^VAULT_ADDR=/d' ../.env; \

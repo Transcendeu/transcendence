@@ -554,7 +554,6 @@ this.gameEndScreen.innerHTML = `
   private handleBackButtonClick = (e: Event) => {
       e.preventDefault(); 
       this.leavePage();
-      setTimeout(() => window.history.back(), 0);
   };
 
   private handlePopState = (e: PopStateEvent) => {
