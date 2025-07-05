@@ -66,9 +66,9 @@ export class App {
         });
 
         // Protected routes
-        this.router.addRoute('/game/online', () => {
+        this.router.addRoute('/game/online', async () => {
             this.container.innerHTML = '';
-            return this.startOnlineGame();
+            await this.startOnlineGame();
         }, { requiresAuth: true });
 
         this.router.addRoute('/game-history', () => {
@@ -105,21 +105,31 @@ export class App {
 
     private async startOnlineGame(): Promise<void> {
         type MatchRole = 'player1' | 'player2' | 'spectator';
-        return new Promise(async (resolve) => {
-            const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
-            const name = userData.username;
+        const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
+        const name = userData.username;
 
-            const matchFinder = new MatchFinder(this.container);
-            const matchInfo: { gameId: string | null, role: MatchRole } = await matchFinder.findMatch(name);
-            this.cleanupGameManager();
+        const matchFinder = new MatchFinder(this.container);
+        const matchInfo: { gameId: string | null, role: MatchRole } = await matchFinder.findMatch(name);
+
+        this.cleanupGameManager();
+
+        return new Promise(async (resolve) => {
             this.gameManager = new GameManager(this.container, () => {
+                this.cleanupGameManager();
                 this.router.navigate('/');
                 resolve();
-                this.cleanupGameManager();
             });
-            await this.gameManager.initOnline(name, matchInfo);
+
+            try {
+                await this.gameManager.initOnline(name, matchInfo);
+            } catch (err) {
+                console.error('Failed to initialize online game:', err);
+                this.router.navigate('/menu');
+                resolve();
+            }
         });
     }
+
 
     private showInitialScreen(): void {
         const currentPath = window.location.pathname;

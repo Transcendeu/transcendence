@@ -146,13 +146,9 @@ export class Menu {
         }
 
         try {
-            const parsedData = JSON.parse(userData) as UserData;
+//            const parsedData = JSON.parse(userData) as UserData;
             const hasTokens = Boolean(accessToken && refreshToken);
-            console.log('Checking authentication:', { 
-                hasUserData: true, 
-                hasTokens,
-                userData: parsedData 
-            });
+//            console.log('Checking authentication:', { hasUserData: true, hasTokens, userData: parsedData });
             return hasTokens;
         } catch (error) {
             console.error('Error checking authentication:', error);

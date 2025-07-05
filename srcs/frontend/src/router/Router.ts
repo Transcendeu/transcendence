@@ -37,7 +37,7 @@ export class Router {
 
         try {
             if (route) {
-                console.log('Found route:', path, 'requiresAuth:', route.requiresAuth);
+//                console.log('Found route:', path, 'requiresAuth:', route.requiresAuth);
                 if (route.requiresAuth && !this.isAuthenticated()) {
                     await this.navigate('/login');
                     return;
@@ -57,7 +57,7 @@ export class Router {
         const token = localStorage.getItem('access_token');
         const userData = localStorage.getItem('user_data');
         const isAuth = !!token && !!userData;
-        console.log('Checking authentication in router:', { token: !!token, userData: !!userData, isAuth });
+//        console.log('Checking authentication in router:', { token: !!token, userData: !!userData, isAuth });
         return isAuth;
     }
 }

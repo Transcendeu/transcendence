@@ -64,7 +64,7 @@ export async function refreshRoute(fastify: FastifyInstance) {
       const authId = authRecords[0].id;
 
       // 3) Gera novos tokens usando os utilitários
-      const newAccessToken = await signJwt({ id: decoded.id, email: decoded.email });
+      const newAccessToken = await signJwt({ id: decoded.id, email: decoded.email, username: decoded.username });
       const newRefreshToken = await signRefreshJwt({ id: decoded.id });
 
       const newExpiresAt = new Date();

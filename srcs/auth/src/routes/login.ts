@@ -72,7 +72,7 @@ export async function loginRoute(fastify: FastifyInstance): Promise<void> {
       }
 
       // 4) Gera tokens com seu módulo JWT
-      const accessToken = await signJwt({ id: foundUser.id, email: foundUser.email });
+      const accessToken = await signJwt({ id: foundUser.id, email: foundUser.email, username: foundUser.username });
       const refreshToken = await signRefreshJwt({ id: foundUser.id });
 
       const expiresAt = new Date();

@@ -53,7 +53,7 @@ export async function registerRoute(fastify: FastifyInstance): Promise<void> {
       const newUser: User = await createUserRes.json();
 
       // 3) Geração de tokens via Vault
-      const accessToken = await signJwt({ id: newUser.id, email: newUser.email });
+      const accessToken = await signJwt({ id: newUser.id, email: newUser.email, username: newUser.username });
       const refreshToken = await signRefreshJwt({ id: newUser.id });
 
       const expiresAt = new Date();
