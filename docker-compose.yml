@@ -4,14 +4,14 @@ networks:
 
 services:
   vault:
-    image: hashicorp/vault:1.16
+    build:
+      context: .
     container_name: vault
     cap_add:
       - IPC_LOCK
     ports: []
     volumes:
-      - transcendence_vault_data:/vault/data                # persistência de dados
-      - ./vault/vault.hcl:/vault/config/vault.hcl:ro,Z      # configuração do Vault
+      - transcendence_vault_data:/vault/data
     command: vault server -config=/vault/config/vault.hcl
     env_file:
       - .env
@@ -65,8 +65,8 @@ services:
       dockerfile: Dockerfile
     image: api-gateway
     ports:
-      - "443:443"
-      - "80:80"
+      - "8443:443"
+      - "8081:80"
     depends_on:
       - auth
       - relay
