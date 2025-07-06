@@ -26,8 +26,12 @@ export async function setup2faRoute(fastify: FastifyInstance): Promise<void> {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ two_factor_secret: secret.base32 })
+        body: JSON.stringify({
+          two_factor_secret: secret.base32,
+          two_factor_enabled: true
+        })
       });
+
 
       if (!patchRes.ok) {
         request.log.error('Error saving 2FA secret:', await patchRes.text());

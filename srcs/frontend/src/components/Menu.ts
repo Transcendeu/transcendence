@@ -271,7 +271,7 @@ export class Menu {
                     }
 
                     const parsedData = JSON.parse(userData) as UserData;
-                    console.log('Logging out user:', parsedData);
+//                    console.log('Logging out user:', parsedData);
                     const response = await fetch('/api/auth/logout', {
                         method: 'POST',
                         headers: {
