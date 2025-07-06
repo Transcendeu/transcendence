@@ -332,6 +332,51 @@ initDatabase()
       }
     });
 
+        // 5.8 Buscar histórico de partidas de um usuário
+    fastify.get('/games/users/:id/history', async (request, reply) => {
+      const userId = request.params.id;
+
+      // Validação básica
+      if (!userId) {
+        return reply.code(400).send({ error: 'ID do usuário é obrigatório' });
+      }
+
+      return new Promise((resolve, reject) => {
+        // Seleciona todas as partidas onde o usuário foi jogador 1 ou 2
+        db.all(
+          `SELECT
+            G.id,
+            G.p1_id,
+            U1.username AS p1_username,
+            G.p2_id,
+            U2.username AS p2_username,
+            G.p1_score,
+            G.p2_score,
+            G.winner_id,
+            Gw.username AS winner_username,
+            G.created_at
+          FROM GAME G
+          JOIN USERS U1 ON G.p1_id = U1.id
+          JOIN USERS U2 ON G.p2_id = U2.id
+          JOIN USERS Gw ON G.winner_id = Gw.id
+          WHERE G.p1_id = ? OR G.p2_id = ?
+          ORDER BY G.created_at DESC`,
+          [userId, userId],
+          (err, rows) => {
+            if (err) {
+              fastify.log.error(`Erro ao buscar histórico do usuário ${userId}:`, err);
+              reply.code(500).send({ error: 'Erro no banco de dados ao buscar histórico' });
+              return reject(err);
+            }
+            if (!rows || rows.length === 0) {
+              return resolve([]);  // retorna lista vazia se não houver partidas
+            }
+            resolve(rows);
+          }
+        );
+      });
+    });
+
 
     // 6. Inicia o servidor Fastify na porta 5000
     const start = async () => {

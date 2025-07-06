@@ -5,7 +5,8 @@ interface User {
   id: string;
   username: string;
   email: string;
-  two_factor_enabled: boolean;
+  two_factor_secret?: string | null;
+  two_factor_enabled?: boolean;
 }
 
 const DB_SERVICE_URL = process.env.DATABASE_URL || 'http://database:5000';
@@ -47,8 +48,9 @@ export async function meRoute(fastify: FastifyInstance): Promise<void> {
         id: foundUser.id,
         username: foundUser.username,
         email: foundUser.email,
-        twoFactorEnabled: foundUser.two_factor_enabled
+        twoFactorEnabled: !!foundUser.two_factor_enabled
       };
+
 
     } catch (err) {
       request.log.error('Error fetching /me:', err);

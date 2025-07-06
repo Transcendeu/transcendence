@@ -12,11 +12,11 @@ jq_query() {
 }
 
 # Always resolve paths relative to project root
-PROJECT_ROOT=$(cd "$(dirname "$0")/.." && pwd)
+PROJECT_ROOT=$(cd "$(dirname "$0")/../../" && pwd)
 VAULT_SERVICE=vault
 VAULT_ADDR=http://localhost:8200
 ENV_FILE="$PROJECT_ROOT/.env"
-DATA_DIR="$PROJECT_ROOT/vault/data"
+DATA_DIR="$PROJECT_ROOT/srcs/vault/data"
 
 echo "Creating Vault volume if it doesn't exist..."
 docker volume create transcendence_vault_data >/dev/null

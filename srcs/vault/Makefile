@@ -21,11 +21,11 @@ logs:
 clean:
 #	@echo "Removing Vault data directory..."
 #	sudo rm -rf ./data
-	@if [ -f "../.env" ]; then \
-		echo "Cleaning Vault variables from ../.env..."; \
-		sed -i '/^VAULT_ADDR=/d' ../.env; \
-		sed -i '/^VAULT_TOKEN=/d' ../.env; \
-		sed -i '/^VAULT_UNSEAL_KEY=/d' ../.env; \
+	@if [ -f "../../.env" ]; then \
+		echo "Cleaning Vault variables from ../../.env..."; \
+		sed -i '/^VAULT_ADDR=/d' ../../.env; \
+		sed -i '/^VAULT_TOKEN=/d' ../../.env; \
+		sed -i '/^VAULT_UNSEAL_KEY=/d' ../../.env; \
 		echo "Vault-related .env entries removed."; \
 	else \
 		echo "Env file not found, skipping .env cleanup."; \

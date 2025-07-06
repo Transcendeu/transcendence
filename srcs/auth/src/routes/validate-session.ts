@@ -9,7 +9,6 @@ export async function validateSessionRoute(fastify: FastifyInstance): Promise<vo
     // Manually cast request.body to expected shape
     const body = request.body as { username: string };
     const { username } = body;
-
     // Cast request to access custom token payload
     const user = (request as FastifyRequest & { user?: { username: string } }).user;
 

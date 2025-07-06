@@ -55,10 +55,10 @@ export class App {
             return this.startLocalGame();
         });
 
-        this.router.addRoute('/game/local-tournament', () => {
+        this.router.addRoute('/game/local-tournament', async () => {
+            await new Promise(resolve => setTimeout(resolve));
             this.cleanupGameManager();
             this.container.innerHTML = '';
-            this.router.navigate('/game/local-tournament');
             new LocalTournament(this.container, this.router, {
                 setManager: this.setGameManager,
                 cleanupManager: this.cleanupGameManager

@@ -1,6 +1,8 @@
 import { Router } from '../router/Router';
 
 export class Settings {
+    private twoFactorEnabled: boolean = false;
+
     constructor(private container: HTMLElement, private router: Router) {
         this.render();
     }
@@ -48,24 +50,17 @@ export class Settings {
 
             if (!response.ok) {
                 if (response.status === 401) {
-                    // Try to refresh the token
                     const refreshResponse = await fetch('/api/auth/refresh', {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            refreshToken: localStorage.getItem('refresh_token')
-                        })
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ refreshToken: localStorage.getItem('refresh_token') })
                     });
 
                     if (refreshResponse.ok) {
                         const data = await refreshResponse.json();
                         localStorage.setItem('access_token', data.accessToken);
-                        // Retry the original request
                         return this.load2FAStatus();
                     } else {
-                        // If refresh fails, redirect to login
                         this.router.navigate('/login');
                         return;
                     }
@@ -74,14 +69,16 @@ export class Settings {
             }
 
             const user = await response.json();
+            this.twoFactorEnabled = user.twoFactorEnabled;
+
             const statusDiv = document.querySelector('#twoFactorStatus');
             if (statusDiv) {
-                statusDiv.textContent = user.twoFactorEnabled ? '2FA is enabled' : '2FA is not enabled';
+                statusDiv.textContent = this.twoFactorEnabled ? '2FA is enabled' : '2FA is not enabled';
             }
 
             const setupButton = document.querySelector('#setup2FA');
             if (setupButton) {
-                setupButton.textContent = user.twoFactorEnabled ? 'Disable 2FA' : 'Setup 2FA';
+                setupButton.textContent = this.twoFactorEnabled ? 'Disable 2FA' : 'Setup 2FA';
             }
         } catch (error) {
             console.error('Error loading 2FA status:', error);
@@ -97,53 +94,84 @@ export class Settings {
 
         if (setupButton) {
             setupButton.addEventListener('click', async () => {
-                try {
-                    const response = await fetch('/api/auth/2fa/setup', {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
-                        }
-                    });
-
-                    if (!response.ok) {
-                        if (response.status === 401) {
-                            // Try to refresh the token
-                            const refreshResponse = await fetch('/api/auth/refresh', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json'
-                                },
-                                body: JSON.stringify({
-                                    refreshToken: localStorage.getItem('refresh_token')
-                                })
-                            });
-
-                            if (refreshResponse.ok) {
-                                const data = await refreshResponse.json();
-                                localStorage.setItem('access_token', data.accessToken);
-                                // Retry the original request
-                                setupButton.click();
-                                return;
-                            } else {
-                                // If refresh fails, redirect to login
-                                this.router.navigate('/login');
-                                return;
+                if (this.twoFactorEnabled) {
+                    // DISABLE 2FA
+                    try {
+                        const response = await fetch('/api/auth/2fa/disable', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${localStorage.getItem('access_token')}`
                             }
+                        });
+
+                        if (!response.ok) {
+                            if (response.status === 401) {
+                                const refreshResponse = await fetch('/api/auth/refresh', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ refreshToken: localStorage.getItem('refresh_token') })
+                                });
+
+                                if (refreshResponse.ok) {
+                                    const data = await refreshResponse.json();
+                                    localStorage.setItem('access_token', data.accessToken);
+                                    setupButton.click();
+                                    return;
+                                } else {
+                                    this.router.navigate('/login');
+                                    return;
+                                }
+                            }
+                            throw new Error('Failed to disable 2FA');
                         }
-                        throw new Error('Failed to setup 2FA');
-                    }
 
-                    const data = await response.json();
-                    const qrCode = document.querySelector('#qrCode') as HTMLImageElement;
-                    if (qrCode) {
-                        qrCode.src = data.qrCode;
+                        await this.load2FAStatus();
+                    } catch (err) {
+                        console.error('Error disabling 2FA:', err);
                     }
+                } else {
+                    // ENABLE 2FA (setup)
+                    try {
+                        const response = await fetch('/api/auth/2fa/setup', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                            }
+                        });
 
-                    if (twoFactorSetup) {
-                        twoFactorSetup.setAttribute('style', 'display: block');
+                        if (!response.ok) {
+                            if (response.status === 401) {
+                                const refreshResponse = await fetch('/api/auth/refresh', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ refreshToken: localStorage.getItem('refresh_token') })
+                                });
+
+                                if (refreshResponse.ok) {
+                                    const data = await refreshResponse.json();
+                                    localStorage.setItem('access_token', data.accessToken);
+                                    setupButton.click();
+                                    return;
+                                } else {
+                                    this.router.navigate('/login');
+                                    return;
+                                }
+                            }
+                            throw new Error('Failed to setup 2FA');
+                        }
+
+                        const data = await response.json();
+                        const qrCode = document.querySelector('#qrCode') as HTMLImageElement;
+                        if (qrCode) {
+                            qrCode.src = data.qrCode;
+                        }
+
+                        if (twoFactorSetup) {
+                            twoFactorSetup.setAttribute('style', 'display: block');
+                        }
+                    } catch (error) {
+                        console.error('Error setting up 2FA:', error);
                     }
-                } catch (error) {
-                    console.error('Error setting up 2FA:', error);
                 }
             });
         }
@@ -162,25 +190,18 @@ export class Settings {
 
                     if (!response.ok) {
                         if (response.status === 401) {
-                            // Try to refresh the token
                             const refreshResponse = await fetch('/api/auth/refresh', {
                                 method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json'
-                                },
-                                body: JSON.stringify({
-                                    refreshToken: localStorage.getItem('refresh_token')
-                                })
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ refreshToken: localStorage.getItem('refresh_token') })
                             });
 
                             if (refreshResponse.ok) {
                                 const data = await refreshResponse.json();
                                 localStorage.setItem('access_token', data.accessToken);
-                                // Retry the original request
                                 verifyButton.click();
                                 return;
                             } else {
-                                // If refresh fails, redirect to login
                                 this.router.navigate('/login');
                                 return;
                             }
@@ -212,4 +233,4 @@ export class Settings {
             });
         }
     }
-} 
+}
