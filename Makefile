@@ -63,19 +63,19 @@ nuke: down
 	docker volume prune -f
 
 # env file should look like
-GOOGLE_CLIENT_ID=xxx
-GOOGLE_CLIENT_SECRET=xxx
-GOOGLE_CALLBACK_URL='https://localhost:8443/api/auth/google/callback'
-AUTH_PORT=4001
-GAME_PORT=4003
-DB_PORT=5000
-DATABASE_URL=http://database:5000
-GAME_HISTORY_SERVICE_URL=https://localhost:8443
-JWT_KEY=signing_key
-JWT_VALUE=secret
-JWT_REFRESH_KEY=signing_refresh_key
-JWT_REFRESH_VALUE=refresh_secret
-JWT_PATH=jwt_path
+# GOOGLE_CLIENT_ID=xxx
+# GOOGLE_CLIENT_SECRET=xxx
+# GOOGLE_CALLBACK_URL='https://localhost:8443/api/auth/google/callback'
+# AUTH_PORT=4001
+# GAME_PORT=4003
+# DB_PORT=5000
+# DATABASE_URL=http://database:5000
+# GAME_HISTORY_SERVICE_URL=https://localhost:8443
+# JWT_KEY=signing_key
+# JWT_VALUE=secret
+# JWT_REFRESH_KEY=signing_refresh_key
+# JWT_REFRESH_VALUE=refresh_secret
+# JWT_PATH=jwt_path
 # VAULT_ADDR=
 # VAULT_UNSEAL_KEY=
 # VAULT_TOKEN=
