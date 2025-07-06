@@ -3,6 +3,7 @@ import cors from '@fastify/cors';
 import dotenv from 'dotenv';
 
 import { gameRegisterRoute } from './routes/game-register';
+import { gameHistoryRoute } from './routes/game-history';
 
 
 dotenv.config();
@@ -36,3 +37,4 @@ app.register(cors, {
 
 // Registra as rotas
 app.register(gameRegisterRoute);
+app.register(gameHistoryRoute);
