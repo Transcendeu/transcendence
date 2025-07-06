@@ -1,19 +1,30 @@
-FROM node:20-alpine
+# Stage 1: Build
+FROM node:20-alpine AS build
 
-WORKDIR /usr/src/app
+WORKDIR /app
 
-COPY package.json ./
+COPY package*.json tsconfig.json ./
 
 RUN npm install
 RUN apk update && apk add --no-cache sqlite
 
 COPY . .
 
-RUN mkdir -p /data && chown -R node:node /data
-RUN chown -R node:node /usr/src/app
+RUN npm run build
+
+RUN ls -la /app/dist
+
+# Stage 2: Runtime
+FROM node:20-alpine AS runtime
+
+WORKDIR /app
+
+COPY --from=build /app/package*.json ./
+
+RUN npm ci --omit=dev
+
+COPY --from=build /app/dist ./dist
 
 EXPOSE 5000
-
-USER node
 
 CMD ["npm", "start"]
