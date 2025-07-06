@@ -66,7 +66,7 @@ nuke: down
 # env file should look like
 # GOOGLE_CLIENT_ID=xxx
 # GOOGLE_CLIENT_SECRET=xxx
-# GOOGLE_CALLBACK_URL='http://localhost/api/auth/google/callback'
+# GOOGLE_CALLBACK_URL='https://localhost:8443/api/auth/google/callback'
 # AUTH_PORT=4001
 # GAME_PORT=4003
 # DB_PORT=5000
