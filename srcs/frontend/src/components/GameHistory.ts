@@ -13,8 +13,6 @@ interface GameHistoryEntry {
   created_at: string;
 }
 
-const GAME_HISTORY_URL = process.env.GAME_HISTORY_SERVICE_URL || "https://localhost:8443/games/users"
-
 export class GameHistory {
   private userId!: string;
 
@@ -80,7 +78,7 @@ export class GameHistory {
     tbody.innerHTML = `<tr><td colspan="6">Buscando histórico...</td></tr>`;
 
     try {
-      const res = await fetch(`${GAME_HISTORY_URL}/${this.userId}/history`, {
+      const res = await fetch(`/games/users/${this.userId}/history`, {
         headers: {
           'Content-Type': 'application/json',
           // 'Authorization': `Bearer ${JSON.parse(localStorage.getItem('user_data')!).accessToken}`
@@ -88,7 +86,7 @@ export class GameHistory {
       });
 
       const rawText = await res.text();
-      console.log('[Raw response]:', rawText);
+      //console.log('[Raw response]:', rawText);
 
       if (!res.ok) {
         throw new Error(`Status ${res.status} - ${rawText}`);
