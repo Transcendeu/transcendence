@@ -57,6 +57,14 @@ export class Register {
                 const password = formData.get('password') as string;
                 const confirmPassword = formData.get('confirmPassword') as string;
 
+                const usernameRegex = /^[a-zA-Z0-9]+$/;
+
+                if (!usernameRegex.test(username)) {
+                    errorDisplay.textContent = 'Username must contain only letters and numbers (no spaces or special chars)';
+                    (errorDisplay as HTMLElement).style.display = 'block';
+                    return;
+                }
+
                 if (password !== confirmPassword) {
                     errorDisplay.textContent = 'Passwords do not match';
                     (errorDisplay as HTMLElement).style.display = 'block';
