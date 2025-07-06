@@ -9,10 +9,11 @@ export async function validateSessionRoute(fastify: FastifyInstance): Promise<vo
     // Manually cast request.body to expected shape
     const body = request.body as { username: string };
     const { username } = body;
-
     // Cast request to access custom token payload
     const user = (request as FastifyRequest & { user?: { username: string } }).user;
-
+    
+    console.log('[Auth] validate-session: token username =', user?.username);
+    console.log('[Auth] validate-session: body username =', body.username);
     if (!user?.username) {
       return reply.code(401).send({ error: 'Invalid token payload' });
     }

@@ -25,7 +25,7 @@ vault-check:
 	@echo "Checking if .env has Vault secrets..."
 	@if ! tail -n 3 .env | grep -q '^VAULT_TOKEN=' || ! tail -n 3 .env | grep -q '^VAULT_UNSEAL_KEY='; then \
 		echo "Vault secrets missing. Running Vault init..."; \
-		$(MAKE) -C vault init; \
+		$(MAKE) -C ./srcs/vault init; \
 	else \
 		echo "Vault already initialized in .env. Skipping."; \
 	fi
@@ -54,7 +54,7 @@ fclean: clean
 	@echo "Removing Docker volumes..."
 	-docker volume rm transcendence_database_data
 	-docker volume rm transcendence_vault_data
-	$(MAKE) -C vault clean
+	$(MAKE) -C ./srcs/vault clean
 
 re: clean rebuild up
 

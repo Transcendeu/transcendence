@@ -36,13 +36,15 @@ export class GameHistory {
                 </tbody>
               </table>
             </div>
-            <button id="backToHome" class="back-button">Back to Home</button>
+            <div class="settings-links">
+              <button class="text-button" id="backToMenu">BACK TO MENU</button>
+            </div>
           </div>
         `;
 
         this.container.appendChild(gameHistory);
         
-        const backButton = gameHistory.querySelector('#backToHome');
+        const backButton = gameHistory.querySelector('#backToMenu');
         if (backButton) {
             backButton.addEventListener('click', () => {
                 this.router.navigate('/');

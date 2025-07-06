@@ -1,4 +1,4 @@
-import { Engine, Scene, FreeCamera, HemisphericLight, Vector3, MeshBuilder, Mesh, Color3, StandardMaterial, KeyboardInfo, KeyboardEventTypes } from '@babylonjs/core';
+import { Engine, Scene, FreeCamera, HemisphericLight, DirectionalLight, PointLight, Vector3, MeshBuilder, Mesh, Color3, StandardMaterial, KeyboardInfo, KeyboardEventTypes } from '@babylonjs/core';
 import { GameRenderer, BallState, PaddleState } from './interfaces';
 import { GameColors } from '../constants/colors';
 import { TransformNode } from '@babylonjs/core';
@@ -48,7 +48,29 @@ export class BabylonRenderer implements GameRenderer {
     this.camera.mode = FreeCamera.ORTHOGRAPHIC_CAMERA;
     this.updateCameraOrtho();
     const light = new HemisphericLight('light', new Vector3(0, 0, -1), this.scene);
-    light.intensity = 1.2;   
+    //light.intensity = 1.2;
+    light.intensity = 0.3;
+
+const sideLight1 = new DirectionalLight("sideLight1", new Vector3(-2, -1, -1), this.scene);
+sideLight1.intensity = 0.6;
+
+const sideLight2 = new DirectionalLight("sideLight2", new Vector3(2, -1, -1), this.scene);
+sideLight2.intensity = 0.6;
+
+const corners = [
+    new Vector3(-GAME_WIDTH/2, -GAME_HEIGHT/2, 2),
+    new Vector3(GAME_WIDTH/2, -GAME_HEIGHT/2, 2),
+    new Vector3(-GAME_WIDTH/2, GAME_HEIGHT/2, 2),
+    new Vector3(GAME_WIDTH/2, GAME_HEIGHT/2, 2)
+];
+
+corners.forEach((pos, i) => {
+  if (!this.scene) return;
+    const cornerLight = new PointLight(`cornerLight${i}`, pos, this.scene);
+    cornerLight.intensity = 1.2;
+    cornerLight.diffuse = Color3.FromHexString(GameColors.paddleColors[i % GameColors.paddleColors.length]);
+    cornerLight.parent = this.gameRoot;
+});
 
     this.glowLayer = new GlowLayer("glow", this.scene);
     this.glowLayer.intensity = 0.8;

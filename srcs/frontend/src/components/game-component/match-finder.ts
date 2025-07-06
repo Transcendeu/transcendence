@@ -47,7 +47,9 @@ export class MatchFinder {
             </div>
             <button id="search-btn" class="menu-button">Search</button>
           </div>
-            <button id="matchfinder-back-btn" class="back-button mt-6">← Back</button>
+            <div class="settings-links">
+              <button class="text-button" id="backToMenu">BACK TO MENU</button>
+            </div>
         </div>
       `;
 
@@ -66,7 +68,7 @@ export class MatchFinder {
         });
       });
 
-      this.container.querySelector('#matchfinder-back-btn')?.addEventListener('click', () => {
+      this.container.querySelector('#backToMenu')?.addEventListener('click', () => {
         window.history.back(); // or this.router.navigate('/menu')
       });
 

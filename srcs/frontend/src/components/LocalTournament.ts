@@ -51,6 +51,9 @@ export class LocalTournament {
                         </select>
                     </div>
                     <button id="startSetup" class="tournament-button">START SETUP</button>
+                    <div class="settings-links">
+                        <button class="text-button" id="backToMenu">BACK TO MENU</button>
+                    </div>
                 </div>
             </div>
         `;
@@ -61,6 +64,12 @@ export class LocalTournament {
                 const playerCountSelect = document.getElementById('playerCount') as HTMLSelectElement;
                 const playerCount = parseInt(playerCountSelect.value);
                 this.showPlayerNameInputs(playerCount);
+            });
+        }
+        const backButton = document.getElementById('backToMenu');
+        if (backButton) {
+            backButton.addEventListener('click', () => {
+                this.router.navigate('/menu');
             });
         }
     }
@@ -84,6 +93,9 @@ export class LocalTournament {
                     ${inputs}
                     <div id="form-error" class="error-message"></div>
                     <button type="submit" class="tournament-button">START TOURNAMENT</button>
+                    <div class="settings-links">
+                        <button class="text-button" id="backToMenu">BACK TO MENU</button>
+                    </div>
                 </form>
             </div>
         `;
@@ -159,6 +171,12 @@ export class LocalTournament {
                     input.classList.remove('input-error');
                 });
             }
+        }
+        const backButton = document.getElementById('backToMenu');
+        if (backButton) {
+            backButton.addEventListener('click', () => {
+                this.router.navigate('/menu');
+            });
         }
     }
 
@@ -364,15 +382,17 @@ export class LocalTournament {
                             `).join('')}
                     </div>
                 </div>
-                <button id="returnToMenu" class="tournament-button">RETURN TO MENU</button>
+                <div class="settings-links">
+                    <button class="text-button" id="backToMenu">BACK TO MENU</button>
+                </div>
             </div>
         `;
 
-        const returnBtn = document.getElementById('returnToMenu');
-        if (returnBtn) {
-            returnBtn.addEventListener('click', () => {
-                this.router.navigate('/');
+        const backButton = document.getElementById('backToMenu');
+        if (backButton) {
+            backButton.addEventListener('click', () => {
+                this.router.navigate('/menu');
             });
         }
     }
-} 
+}
