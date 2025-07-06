@@ -13,11 +13,9 @@ interface GameHistoryEntry {
   created_at: string;
 }
 
-const GAME_HISTORY_URL = process.env.GAME_HISTORY_SERVICE_URL || "https://localhost:8443"
+const GAME_HISTORY_URL = process.env.GAME_HISTORY_SERVICE_URL || "https://localhost:8443/games/users"
 
 export class GameHistory {
-  // 1) parameter properties para container e router  
-  // 2) definite assignment assertion (!) em userId  
   private userId!: string;
 
   constructor(
@@ -34,7 +32,6 @@ export class GameHistory {
       const user = JSON.parse(raw) as {
         id: number;
         accessToken: string;
-        // demais campos…
       };
       this.userId = String(user.id);
     } catch {
@@ -54,12 +51,12 @@ export class GameHistory {
           <table class="game-history-table">
             <thead class="game-history-thead">
               <tr>
-                <th>User</th>
-                <th>Points</th>
-                <th></th>
-                <th>Points</th>
-                <th>Opponent</th>
-                <th>Winner</th>
+                <th class="px-4">User</th>
+                <th class="px-4">Points</th>
+                <th class="px-4"></th>
+                <th class="px-4">Points</th>
+                <th class="px-4">User</th>
+                <th class="px-4">Winner</th>
               </tr>
             </thead>
             <tbody id="history-body">
@@ -67,7 +64,7 @@ export class GameHistory {
             </tbody>
           </table>
         </div>
-        <div>
+        <div class="settings-links">
           <button class="text-button" id="backToMenu">BACK TO MENU</button>
         </div>
       </div>
@@ -83,30 +80,40 @@ export class GameHistory {
     tbody.innerHTML = `<tr><td colspan="6">Buscando histórico...</td></tr>`;
 
     try {
-      const res = await fetch(
-        `${GAME_HISTORY_URL}/${this.userId}/history`,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            // se precisar de auth:
-            // 'Authorization': `Bearer ${JSON.parse(localStorage.getItem('user_data')!).accessToken}`
-          }
+      const res = await fetch(`${GAME_HISTORY_URL}/${this.userId}/history`, {
+        headers: {
+          'Content-Type': 'application/json',
+          // 'Authorization': `Bearer ${JSON.parse(localStorage.getItem('user_data')!).accessToken}`
         }
-      );
+      });
+
+      const rawText = await res.text();
+      console.log('[Raw response]:', rawText);
 
       if (!res.ok) {
-        throw new Error(`Status ${res.status}`);
+        throw new Error(`Status ${res.status} - ${rawText}`);
       }
 
-      const { history } = (await res.json()) as {
-        history: GameHistoryEntry[];
-      };
+      // ✅ Correção: o backend retorna um objeto com uma chave "history"
+      let history: GameHistoryEntry[] = [];
+      try {
+        const data = JSON.parse(rawText);
+        if (!Array.isArray(data.history)) {
+          throw new Error('Formato inesperado de resposta');
+        }
+        history = data.history;
+      } catch (e) {
+        console.error('Erro ao parsear JSON:', e);
+        tbody.innerHTML = `<tr><td colspan="6">Resposta inválida do servidor</td></tr>`;
+        return;
+      }
 
       if (history.length === 0) {
         tbody.innerHTML = `<tr><td colspan="6">Nenhuma partida encontrada.</td></tr>`;
         return;
       }
 
+      // ✅ Renderiza cada partida
       tbody.innerHTML = '';
       for (const h of history) {
         const tr = document.createElement('tr');
@@ -121,6 +128,7 @@ export class GameHistory {
         tbody.appendChild(tr);
       }
     } catch (err: any) {
+      console.error('Erro no carregamento:', err);
       tbody.innerHTML = `<tr><td colspan="6">Erro ao carregar histórico: ${err.message}</td></tr>`;
     }
   }

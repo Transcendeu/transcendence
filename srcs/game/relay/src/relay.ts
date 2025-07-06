@@ -4,7 +4,7 @@ import net from 'net';
 import type WSSocket from 'ws';
 import uuid from 'uuid-random';
 
-const GAME_URL = process.env.GAME_HISTORY_SERVICE_URL || 'http://game-history:4003';
+const GAME_URL = 'http://game-history:4003';
 
 interface Client {
   socket?: WSSocket;
