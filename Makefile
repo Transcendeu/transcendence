@@ -64,19 +64,20 @@ nuke: down
 
 
 # env file should look like
-# GOOGLE_CLIENT_ID=xxx
-# GOOGLE_CLIENT_SECRET=xxx
-# GOOGLE_CALLBACK_URL='http://localhost/api/auth/google/callback'
+# GOOGLE_CLIENT_ID=
+# GOOGLE_CLIENT_SECRET=
+# GOOGLE_CALLBACK_URL=
+# NODE_ENV=development
 # AUTH_PORT=4001
 # GAME_PORT=4003
 # DB_PORT=5000
 # DATABASE_URL=http://database:5000
-# GAME_HISTORY_SERVICE_URL=http://game-history:4003/
+# GAME_HISTORY_SERVICE_URL=https://localhost:8443
 # JWT_KEY=signing_key
 # JWT_VALUE=secret
 # JWT_REFRESH_KEY=signing_refresh_key
 # JWT_REFRESH_VALUE=refresh_secret
 # JWT_PATH=jwt_path
-# VAULT_ADDR=http://vault:8200
-# VAULT_TOKEN=xxx
-# VAULT_UNSEAL_KEY=xxx
+# VAULT_ADDR=
+# VAULT_UNSEAL_KEY=
+# VAULT_TOKEN=
