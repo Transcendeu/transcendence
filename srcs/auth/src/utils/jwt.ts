@@ -21,8 +21,6 @@ async function getSecretFromVault(secretKey: string): Promise<string> {
     path: JWT_PATH!,
   });
 
-  console.log('Resposta do Vault:', JSON.stringify(response, null, 2));
-
   const secrets = response?.data?.data?.data as Record<string, string> | undefined;
 
   if (!secrets || !secrets[secretKey]) {

@@ -273,11 +273,13 @@ export class LocalTournament {
     }
 
     private async playMatch(match: Match): Promise<void> {
-        this.container.innerHTML = '';
-        
-        // Create a temporary container for the game
+        // Hide the tournament UI without deleting it
+        this.container.style.display = 'none';
+
+        // Create a dedicated container for the match UI
         const gameContainer = document.createElement('div');
-        this.container.appendChild(gameContainer);
+        gameContainer.id = 'local-game-container';
+        document.body.appendChild(gameContainer); // Or container.parentNode?.appendChild()
 
         // Show match announcement
         const announcementDiv = document.createElement('div');
@@ -311,7 +313,9 @@ export class LocalTournament {
 
 
        const manager = new GameManager(gameContainer, (result) => {
-            this.context.cleanupManager();
+            const existing = document.getElementById('local-game-container');
+            if (existing) existing.remove();
+            this.container.style.display = '';
             if (!result || typeof result.matchWinner !== 'string') return;
 
             const winner = result.matchWinner === 'player1' ? 1 : 2;
